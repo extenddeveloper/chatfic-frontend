@@ -1,0 +1,546 @@
+import type { ChatConfig } from "../types"
+import { ICONS } from "./icons"
+import { MODAL_THEME_GRADIENTS } from "../core/config"
+import { resolveSafeChannelUrl, safeJsonStringify, sanitizeAvatarUrl } from "../core/sanitize"
+
+const getUrl = resolveSafeChannelUrl
+
+function buildChannelMap(config: ChatConfig): string {
+    const channels = config.channels
+        .filter((channel) => channel.enabled && channel.value.trim())
+        .map((channel) => ({
+            ...channel,
+            icon: ICONS[channel.id] ?? ICONS.custom,
+            url: getUrl(channel.id, channel.value, channel.message),
+        }))
+
+    return safeJsonStringify(channels)
+}
+
+function buildAgentMap(config: ChatConfig): string {
+    const channelMap = new Map(config.channels.map((c) => [c.id, c]))
+
+    const agents = (config.agents && config.agents.length > 0 ? config.agents : [])
+        .map((agent) => {
+            const channel = channelMap.get(agent.channelId)
+            const rawVal = agent.value || channel?.value || ""
+            const rawMsg = agent.message || channel?.message || config.modalChatBubble || ""
+            return {
+                id: agent.id,
+                name: agent.name,
+                role: agent.role,
+                avatar: sanitizeAvatarUrl(agent.avatar),
+                channelId: agent.channelId,
+                color: channel?.color || "#25D366",
+                icon: ICONS[agent.channelId] ?? ICONS.custom,
+                url: getUrl(agent.channelId, rawVal, rawMsg),
+                value: rawVal,
+                message: rawMsg,
+                online: agent.online !== false,
+            }
+        })
+
+    return safeJsonStringify(agents)
+}
+
+export function buildWidgetCode(config: ChatConfig): string {
+    const channelData = buildChannelMap(config)
+    const agentData = buildAgentMap(config)
+    const gradient = config.modalTheme === "custom" && config.modalCustomGradient
+        ? config.modalCustomGradient
+        : MODAL_THEME_GRADIENTS[config.modalTheme] || MODAL_THEME_GRADIENTS.whatsapp
+
+    const settings = safeJsonStringify({
+        enabled: config.enabled,
+        widgetMode: config.widgetMode || "modal",
+        modalTheme: config.modalTheme || "whatsapp",
+        modalGradient: gradient,
+        modalTitle: config.modalTitle || "Hi there!",
+        modalSubtitle: config.modalSubtitle || "Welcome to our live chat! Feel free to ask any questions.",
+        modalResponseTime: config.modalResponseTime || "We typically reply within a few minutes",
+        modalChatBubble: config.modalChatBubble || "We typically reply within a few minutes. How can we help you today?",
+        modalStartChatText: config.modalStartChatText || "Start chat",
+        position: config.position,
+        layout: config.layout,
+        buttonShape: config.buttonShape,
+        animation: config.animation,
+        iconStyle: config.iconStyle,
+        buttonSize: config.buttonSize,
+        iconSize: config.iconSize,
+        gap: config.gap,
+        offsetX: config.offsetX,
+        offsetY: config.offsetY,
+        background: config.background,
+        buttonColor: config.buttonColor,
+        labelColor: config.labelColor,
+        labelBackground: config.labelBackground,
+        panelBackground: config.panelBackground,
+        panelText: config.panelText,
+        shadow: config.shadow,
+        showLabels: config.showLabels,
+        showChannelNames: config.showChannelNames,
+        showBadge: config.showBadge,
+        badgeText: config.badgeText,
+        greetingEnabled: config.greetingEnabled,
+        greetingText: config.greetingText,
+        greetingDelay: config.greetingDelay,
+        autoOpen: config.autoOpen,
+        autoOpenDelay: config.autoOpenDelay,
+        closeAfterClick: config.closeAfterClick,
+        closeOnOutsideClick: config.closeOnOutsideClick,
+        closeOnEscape: config.closeOnEscape,
+        mobileShowLabels: config.mobileShowLabels,
+        mobileOffsetX: config.mobileOffsetX,
+        mobileOffsetY: config.mobileOffsetY,
+        ariaLabel: config.ariaLabel,
+    })
+
+    return `<script>
+(function(){
+  "use strict";
+  var SETTINGS = ${settings};
+  var CHANNELS = ${channelData};
+  var AGENTS = ${agentData};
+  var ROOT_ID = "scb-pro-widget-root";
+  var STYLE_ID = "scb-pro-widget-style";
+
+  if (!SETTINGS.enabled || (!CHANNELS.length && !AGENTS.length)) return;
+
+  var existing = document.getElementById(ROOT_ID);
+  if (existing) existing.remove();
+  var oldStyle = document.getElementById(STYLE_ID);
+  if (oldStyle) oldStyle.remove();
+
+  var root = document.createElement("div");
+  root.id = ROOT_ID;
+  root.setAttribute("data-scb-pro", "1");
+
+  var style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = \`
+    #\${ROOT_ID}{position:fixed;z-index:2147483000;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:flex-end;gap:\${SETTINGS.gap}px;pointer-events:none}
+    #\${ROOT_ID}.bottom-right{right:\${SETTINGS.offsetX}px;bottom:\${SETTINGS.offsetY}px;align-items:flex-end}
+    #\${ROOT_ID}.bottom-left{left:\${SETTINGS.offsetX}px;bottom:\${SETTINGS.offsetY}px;align-items:flex-start}
+    #\${ROOT_ID}.top-right{right:\${SETTINGS.offsetX}px;top:\${SETTINGS.offsetY}px;align-items:flex-end;flex-direction:column-reverse}
+    #\${ROOT_ID}.top-left{left:\${SETTINGS.offsetX}px;top:\${SETTINGS.offsetY}px;align-items:flex-start;flex-direction:column-reverse}
+
+    /* Layout Variations */
+    #\${ROOT_ID}.horizontal{flex-direction:row;align-items:center}
+    #\${ROOT_ID}.horizontal.bottom-right,#\${ROOT_ID}.horizontal.top-right{flex-direction:row-reverse}
+    #\${ROOT_ID}.horizontal .scb-list{flex-direction:row;align-items:center}
+    #\${ROOT_ID}.horizontal.bottom-right .scb-list,#\${ROOT_ID}.horizontal.top-right .scb-list{flex-direction:row-reverse}
+    #\${ROOT_ID}.grid .scb-list{display:grid;grid-template-columns:repeat(2,auto);gap:\${SETTINGS.gap}px}
+
+    /* Greeting bubble */
+    #\${ROOT_ID} .scb-greeting{pointer-events:auto;display:flex;align-items:center;gap:10px;max-width:min(320px,calc(100vw - 32px));padding:10px 14px;border-radius:14px;background:\${SETTINGS.panelBackground};color:\${SETTINGS.panelText};box-shadow:\${SETTINGS.shadow};font-size:13px;line-height:1.4;animation:scb-greet .35s ease both}
+    #\${ROOT_ID} .scb-greeting button{border:0;background:transparent;color:inherit;opacity:.55;cursor:pointer;padding:2px;line-height:1;font-size:16px}
+
+    /* Classic button list */
+    #\${ROOT_ID} .scb-list{display:flex;flex-direction:column;gap:\${SETTINGS.gap}px;pointer-events:none;opacity:0;visibility:hidden;transform:translateY(8px) scale(.96);transition:opacity .22s ease,transform .22s ease,visibility .22s}
+    #\${ROOT_ID}.open .scb-list{pointer-events:auto;opacity:1;visibility:visible;transform:none}
+    #\${ROOT_ID} .scb-item{display:flex;align-items:center;gap:9px;pointer-events:auto}
+    #\${ROOT_ID}.left .scb-item{flex-direction:row}
+    #\${ROOT_ID} .scb-label{max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:7px 10px;border-radius:9px;background:\${SETTINGS.labelBackground};color:\${SETTINGS.labelColor};font-size:12px;font-weight:600;box-shadow:0 7px 20px rgba(0,0,0,.13);opacity:0;transform:translateX(6px);transition:opacity .18s ease,transform .18s ease}
+    #\${ROOT_ID}.open .scb-item:hover .scb-label,#\${ROOT_ID}.open .scb-item:focus-within .scb-label{opacity:1;transform:none}
+
+    /* Live Chat Modal Card */
+    #\${ROOT_ID} .scb-modal{width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 110px);background:#ffffff;border-radius:24px;box-shadow:0 22px 55px rgba(0,0,0,.22),0 8px 20px rgba(0,0,0,.08);overflow:hidden;display:flex;flex-direction:column;pointer-events:none;opacity:0;visibility:hidden;transform:translateY(16px) scale(.96);transition:opacity .25s cubic-bezier(.16,1,.3,1),transform .25s cubic-bezier(.16,1,.3,1),visibility .25s}
+    #\${ROOT_ID}.open .scb-modal{pointer-events:auto;opacity:1;visibility:visible;transform:none}
+
+    .scb-modal-header{background:\${SETTINGS.modalGradient};padding:22px 20px 20px;color:#ffffff;border-radius:24px 24px 0 0;position:relative;display:flex;flex-direction:column;gap:8px}
+    .scb-modal-header-top{display:flex;align-items:center;justify-content:space-between;width:100%}
+    .scb-modal-back-btn{background:rgba(255,255,255,.22);border:0;border-radius:50%;width:28px;height:28px;color:#ffffff;display:flex;align-items:center;justify-content:center;padding:0;margin:0;cursor:pointer;transition:background .15s}
+    .scb-modal-back-btn:hover{background:rgba(255,255,255,.35)}
+    .scb-modal-back-btn svg{width:11px;height:11px;display:block;margin:0}
+    .scb-modal-close-btn{background:rgba(255,255,255,.22);border:0;border-radius:50%;width:28px;height:28px;color:#ffffff;display:flex;align-items:center;justify-content:center;padding:0;margin:0;cursor:pointer;transition:background .15s;margin-left:auto}
+    .scb-modal-close-btn:hover{background:rgba(255,255,255,.35)}
+    .scb-modal-close-btn svg{width:11px;height:11px;display:block;margin:0}
+    .scb-modal-title{font-size:18px;font-weight:700;line-height:1.2;margin:0}
+    .scb-modal-subtitle{font-size:13px;line-height:1.45;opacity:.92;margin:0}
+    .scb-modal-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;width:max-content;backdrop-filter:blur(4px)}
+
+    /* Modal Body & Agents */
+    .scb-modal-body{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:#ffffff;max-height:340px}
+    .scb-agent-card{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#f9fafb;border:1px solid #f3f4f6;cursor:pointer;transition:background .15s,transform .15s,border-color .15s;text-decoration:none;color:inherit;outline:none}
+    .scb-agent-card:hover{background:#f3f4f6;transform:translateY(-1px);border-color:#e5e7eb}
+    .scb-agent-avatar-wrap{position:relative;width:42px;height:42px;flex-shrink:0}
+    .scb-agent-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;display:block}
+    .scb-agent-badge{position:absolute;bottom:-2px;right:-2px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;border:2px solid #ffffff;color:#ffffff}
+    .scb-agent-badge svg{width:10px;height:10px}
+    .scb-agent-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .scb-agent-name{font-size:14px;font-weight:600;color:#111827}
+    .scb-agent-role{font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .scb-agent-arrow{color:#9ca3af;font-size:14px}
+
+    /* Direct Chat View inside Modal */
+    .scb-chat-view{padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+    .scb-chat-bubble{background:#f3f4f6;color:#1f2937;padding:12px 14px;border-radius:16px 16px 16px 4px;font-size:13px;line-height:1.45;max-width:90%;box-shadow:0 1px 3px rgba(0,0,0,.04);animation:scb-pop .25s ease both}
+    .scb-chat-input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .15s}
+    .scb-chat-input:focus{border-color:\${SETTINGS.buttonColor}}
+    .scb-start-btn{background:\${SETTINGS.modalGradient};color:#ffffff;border:0;border-radius:999px;padding:13px 20px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-shadow:0 10px 24px rgba(0,0,0,.16);transition:transform .18s,filter .18s;outline:none}
+    .scb-start-btn:hover{transform:translateY(-2px);filter:brightness(1.06)}
+
+    /* Launcher buttons */
+    #\${ROOT_ID} .scb-button{width:\${SETTINGS.buttonSize}px;height:\${SETTINGS.buttonSize}px;display:grid;place-items:center;border:0;padding:0;cursor:pointer;text-decoration:none;color:#fff;background:var(--scb-color);box-shadow:\${SETTINGS.shadow};transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;position:relative;flex:0 0 auto;outline:none}
+    #\${ROOT_ID} .scb-button:hover{transform:translateY(-2px) scale(1.04);filter:saturate(1.08)}
+    #\${ROOT_ID} .scb-button svg{width:\${SETTINGS.iconSize}px;height:\${SETTINGS.iconSize}px;display:block}
+    #\${ROOT_ID} .circle{border-radius:50%}
+    #\${ROOT_ID} .rounded{border-radius:16px}
+    #\${ROOT_ID} .pill{border-radius:999px;width:auto;min-width:\${SETTINGS.buttonSize}px;padding:0 18px}
+    #\${ROOT_ID} .scb-main{pointer-events:auto}
+    #\${ROOT_ID} .scb-main .scb-button{background:\${SETTINGS.buttonColor}}
+    #\${ROOT_ID} .scb-main-icon{transition:transform .25s ease}
+    #\${ROOT_ID}.open .scb-main-icon{transform:rotate(45deg)}
+    #\${ROOT_ID} .scb-badge{position:absolute;right:-3px;top:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:10px;font-weight:700;display:grid;place-items:center}
+
+    /* Accessibility / Keyboard Focus Styles */
+    #\${ROOT_ID} button:focus-visible,
+    #\${ROOT_ID} a:focus-visible,
+    #\${ROOT_ID} input:focus-visible,
+    #\${ROOT_ID} .scb-agent-card:focus-visible{
+      outline: 2px solid #2563eb !important;
+      outline-offset: 2px !important;
+    }
+
+    /* Animation Presets */
+    @keyframes scb-pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
+    @keyframes scb-bounce{0%{opacity:0;transform:translateY(16px) scale(.85)}60%{opacity:1;transform:translateY(-4px) scale(1.03)}100%{opacity:1;transform:none}}
+    @keyframes scb-slide{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+    @keyframes scb-pulse{0%,100%{transform:scale(1);box-shadow:\${SETTINGS.shadow}}50%{transform:scale(1.08);box-shadow:0 0 20px \${SETTINGS.buttonColor}}}
+    @keyframes scb-greet{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+
+    #\${ROOT_ID}.anim-pop.open .scb-modal, #\${ROOT_ID}.anim-pop.open .scb-list{animation:scb-pop .25s cubic-bezier(.16,1,.3,1) both}
+    #\${ROOT_ID}.anim-bounce.open .scb-modal, #\${ROOT_ID}.anim-bounce.open .scb-list{animation:scb-bounce .35s cubic-bezier(.34,1.56,.64,1) both}
+    #\${ROOT_ID}.anim-slide.open .scb-modal, #\${ROOT_ID}.anim-slide.open .scb-list{animation:scb-slide .28s cubic-bezier(.16,1,.3,1) both}
+    #\${ROOT_ID}.anim-pulse:not(.open) .scb-main .scb-button{animation:scb-pulse 2.2s infinite ease-in-out}
+    #\${ROOT_ID}.anim-none.open .scb-modal, #\${ROOT_ID}.anim-none.open .scb-list{animation:none;opacity:1;visibility:visible;transform:none}
+
+    /* Mobile Responsive Offsets and Label Control */
+    @media (max-width:640px){
+      #\${ROOT_ID}.bottom-right,#\${ROOT_ID}.bottom-left{right:\${SETTINGS.mobileOffsetX}px;bottom:\${SETTINGS.mobileOffsetY}px;left:auto}
+      #\${ROOT_ID}.top-right,#\${ROOT_ID}.top-left{right:\${SETTINGS.mobileOffsetX}px;top:\${SETTINGS.mobileOffsetY}px;left:auto}
+      #\${ROOT_ID} .scb-modal{width:calc(100vw - 32px);max-height:80vh}
+      \${!SETTINGS.mobileShowLabels ? \`#\${ROOT_ID} .scb-label{display:none !important}\` : ""}
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce){
+      #\${ROOT_ID} *, #\${ROOT_ID} *::before, #\${ROOT_ID} *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  \`;
+
+  document.head.appendChild(style);
+
+  function create(tag, className){
+    var el = document.createElement(tag);
+    if(className) el.className = className;
+    return el;
+  }
+
+  var activeAgent = null;
+
+  function openDirectChat(agent){
+    activeAgent = agent;
+    render();
+  }
+
+  function backToList(){
+    activeAgent = null;
+    render();
+  }
+
+  function toggleMenu(){
+    var isOpen = root.classList.contains("open");
+    if(isOpen){
+      closeMenu();
+    } else {
+      root.classList.add("open");
+      var btn = root.querySelector(".scb-main .scb-button");
+      if(btn) btn.setAttribute("aria-expanded","true");
+    }
+  }
+
+  function closeMenu(restoreFocus){
+    root.classList.remove("open");
+    activeAgent = null;
+    var btn = root.querySelector(".scb-main .scb-button");
+    if(btn){
+      btn.setAttribute("aria-expanded","false");
+      if(restoreFocus) btn.focus();
+    }
+  }
+
+  function render(){
+    root.innerHTML = "";
+    root.className = SETTINGS.position + " " + SETTINGS.layout + " anim-" + SETTINGS.animation + (SETTINGS.position.indexOf("left") >= 0 ? " left" : "") + (root.classList.contains("open") ? " open" : "");
+
+    // 1. Modal Mode (Webflow Style)
+    if(SETTINGS.widgetMode === "modal"){
+      var modal = create("div","scb-modal");
+
+      var header = create("div","scb-modal-header");
+      var headerTop = create("div","scb-modal-header-top");
+
+      if(activeAgent){
+        var backBtn = create("button","scb-modal-back-btn");
+        backBtn.type = "button";
+        backBtn.setAttribute("aria-label", "Back to team");
+        backBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M9.5 4L5.5 8l4 4"/></svg>';
+        backBtn.onclick = backToList;
+        headerTop.appendChild(backBtn);
+      }
+
+      var closeBtn = create("button","scb-modal-close-btn");
+      closeBtn.type = "button";
+      closeBtn.setAttribute("aria-label", "Close chat");
+      closeBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
+      closeBtn.onclick = closeMenu;
+      headerTop.appendChild(closeBtn);
+      header.appendChild(headerTop);
+
+      if(!activeAgent){
+        var title = create("h3","scb-modal-title");
+        title.textContent = SETTINGS.modalTitle;
+        header.appendChild(title);
+
+        var subtitle = create("p","scb-modal-subtitle");
+        subtitle.textContent = SETTINGS.modalSubtitle;
+        header.appendChild(subtitle);
+
+        if(SETTINGS.modalResponseTime){
+          var badge = create("span","scb-modal-badge");
+          badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.2l2.2 1.3"/></svg>' + SETTINGS.modalResponseTime;
+          header.appendChild(badge);
+        }
+      } else {
+        var agentTitle = create("h3","scb-modal-title");
+        agentTitle.textContent = activeAgent.name;
+        header.appendChild(agentTitle);
+
+        var agentSubtitle = create("p","scb-modal-subtitle");
+        agentSubtitle.textContent = activeAgent.role;
+        header.appendChild(agentSubtitle);
+      }
+
+      modal.appendChild(header);
+
+      if(!activeAgent){
+        var body = create("div","scb-modal-body");
+        var listToRender = AGENTS.length ? AGENTS : CHANNELS.map(function(c, i){
+          return {
+            id: c.id,
+            name: c.label + " Team",
+            role: "Customer Support",
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
+            channelId: c.id,
+            color: c.color,
+            icon: c.icon,
+            url: c.url,
+            value: c.value,
+            message: c.message
+          };
+        });
+
+        listToRender.forEach(function(agent){
+          var card = create("div","scb-agent-card");
+          card.setAttribute("role", "button");
+          card.setAttribute("tabindex", "0");
+          card.setAttribute("aria-label", "Chat with " + agent.name + ", " + agent.role);
+          card.onclick = function(){ openDirectChat(agent); };
+          card.onkeydown = function(e){
+            if(e.key === "Enter" || e.key === " "){
+              e.preventDefault();
+              openDirectChat(agent);
+            }
+          };
+
+          var avatarWrap = create("div","scb-agent-avatar-wrap");
+          var avatar = create("img","scb-agent-avatar");
+          var rawAvatar = agent.avatar || "";
+          avatar.src = (rawAvatar.indexOf("http://") === 0 || rawAvatar.indexOf("https://") === 0 || rawAvatar.indexOf("data:image/") === 0)
+            ? rawAvatar
+            : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80";
+          avatar.alt = agent.name;
+          avatarWrap.appendChild(avatar);
+
+          var badge = create("span","scb-agent-badge");
+          badge.style.background = agent.color || "#25D366";
+          badge.innerHTML = agent.icon || "";
+          avatarWrap.appendChild(badge);
+          card.appendChild(avatarWrap);
+
+          var info = create("div","scb-agent-info");
+          var name = create("div","scb-agent-name");
+          name.textContent = agent.name;
+          var role = create("div","scb-agent-role");
+          role.textContent = agent.role;
+          info.appendChild(name);
+          info.appendChild(role);
+          card.appendChild(info);
+
+          var arrow = create("span","scb-agent-arrow");
+          arrow.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5L10.5 8L6 12.5"/></svg>';
+          card.appendChild(arrow);
+
+          body.appendChild(card);
+        });
+        modal.appendChild(body);
+      } else {
+        var chatView = create("div","scb-chat-view");
+        var bubble = create("div","scb-chat-bubble");
+        bubble.textContent = activeAgent.message || SETTINGS.modalChatBubble;
+        chatView.appendChild(bubble);
+
+        var input = create("input","scb-chat-input");
+        input.type = "text";
+        input.placeholder = activeAgent.message || "Type your message...";
+        input.value = activeAgent.message || "";
+        input.maxLength = 500;
+        chatView.appendChild(input);
+
+        var startBtn = create("a","scb-start-btn");
+        startBtn.textContent = SETTINGS.modalStartChatText;
+        startBtn.target = "_blank";
+        startBtn.rel = "noopener noreferrer";
+        var agentUrl = activeAgent.url || "";
+        startBtn.href = (!/^javascript:/i.test(agentUrl)) ? agentUrl : "#";
+
+        input.oninput = function(){
+          var cleanVal = String(activeAgent.value || "").trim();
+          var encMsg = encodeURIComponent(input.value.trim());
+          if(activeAgent.channelId === "whatsapp"){
+            startBtn.href = "https://wa.me/" + cleanVal.replace(/[^0-9]/g,"") + (encMsg ? "?text=" + encMsg : "");
+          } else if(activeAgent.channelId === "telegram"){
+            startBtn.href = "https://t.me/" + cleanVal.replace(/^@/,"").replace(/[^a-zA-Z0-9._-]/g,"") + (encMsg ? "?text=" + encMsg : "");
+          } else if(activeAgent.channelId === "email"){
+            startBtn.href = "mailto:" + cleanVal.replace(/[^a-zA-Z0-9._%+\-@]/g,"") + (encMsg ? "?body=" + encMsg : "");
+          }
+        };
+
+        startBtn.onclick = function(){
+          if(SETTINGS.closeAfterClick) closeMenu();
+        };
+
+        chatView.appendChild(startBtn);
+        modal.appendChild(chatView);
+      }
+
+      root.appendChild(modal);
+    } else {
+      // 2. Classic Icon Buttons Mode
+      var list = create("div","scb-list");
+      CHANNELS.forEach(function(channel,index){
+        var item = create("div","scb-item");
+        item.style.setProperty("--scb-color", channel.color || "#111827");
+        var label = create("span","scb-label");
+        label.textContent = SETTINGS.showChannelNames ? channel.label : "";
+        if(!SETTINGS.showLabels) label.style.display = "none";
+
+        var link = create("a","scb-button " + SETTINGS.buttonShape);
+        var chUrl = channel.url || "";
+        link.href = (!/^javascript:/i.test(chUrl)) ? chUrl : "#";
+        link.setAttribute("aria-label", channel.label);
+        link.style.setProperty("--scb-color", channel.color || "#111827");
+        link.innerHTML = channel.icon || "";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.onclick = function(){ if(SETTINGS.closeAfterClick) closeMenu(); };
+
+        if(root.classList.contains("left")){
+          item.appendChild(link);
+          if(SETTINGS.showLabels) item.appendChild(label);
+        } else {
+          if(SETTINGS.showLabels) item.appendChild(label);
+          item.appendChild(link);
+        }
+        list.appendChild(item);
+      });
+      root.appendChild(list);
+    }
+
+    // Floating Main Launcher
+    var main = create("div","scb-main");
+    var mainButton = create("button","scb-button " + SETTINGS.buttonShape);
+    mainButton.type = "button";
+    mainButton.setAttribute("aria-label", SETTINGS.ariaLabel);
+    mainButton.setAttribute("aria-expanded", root.classList.contains("open") ? "true" : "false");
+    mainButton.style.background = SETTINGS.buttonColor;
+    mainButton.innerHTML = '<svg class="scb-main-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.9 14.6L2 22l5.4-1.1A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4-1.1l-.4-.2-3.2.7.7-3.1-.2-.4A8 8 0 1 1 12 20Zm4.4-5.4c-.2-.1-1.2-.6-1.4-.6-.2-.1-.3-.1-.5.1l-.6.7c-.1.2-.2.2-.4.1-1.4-.7-2.4-1.8-3.1-3.1-.1-.2 0-.3.1-.4l.5-.6c.1-.2.1-.3 0-.5l-.6-1.4c-.1-.4-.3-.3-.5-.3h-.4c-.2 0-.5.1-.6.3-.6.6-.8 1.4-.8 2.2 0 .2.1.4.1.6.4 1.4 1.2 2.7 2.3 3.7 1.1 1 2.4 1.8 3.9 2.3.8.2 1.5.3 2.1.1.7-.1 1.4-.6 1.6-1.2.1-.3.1-.6 0-.7-.2-.1-.4-.2-.7-.3Z"/></svg>';
+
+    if(SETTINGS.showBadge){
+      var badgeEl = create("span","scb-badge");
+      badgeEl.textContent = SETTINGS.badgeText || "1";
+      mainButton.appendChild(badgeEl);
+    }
+
+    mainButton.onclick = toggleMenu;
+    main.appendChild(mainButton);
+    root.appendChild(main);
+  }
+
+  document.body.appendChild(root);
+  render();
+
+  if(SETTINGS.greetingEnabled && SETTINGS.greetingText){
+    setTimeout(function(){
+      if(!root.classList.contains("open")){
+        var greet = create("div","scb-greeting");
+        var greetSpan = create("span");
+        greetSpan.textContent = SETTINGS.greetingText;
+        var dismissBtn = create("button");
+        dismissBtn.type = "button";
+        dismissBtn.setAttribute("aria-label", "Dismiss");
+        dismissBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+        dismissBtn.onclick = function(){ greet.remove(); };
+        greet.appendChild(greetSpan);
+        greet.appendChild(dismissBtn);
+        root.insertBefore(greet, root.firstChild);
+
+        if(SETTINGS.enableSound){
+          try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.06, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.35);
+          } catch(e){}
+        }
+      }
+    }, SETTINGS.greetingDelay || 2500);
+  }
+
+  if(SETTINGS.autoOpen){
+    setTimeout(function(){ toggleMenu(); }, SETTINGS.autoOpenDelay || 1200);
+  }
+
+  root.addEventListener("click", function(e){
+    e.stopPropagation();
+  });
+
+  if(SETTINGS.closeOnOutsideClick){
+    document.addEventListener("click", function(e){
+      if(!e.target || !document.contains(e.target)) return;
+      if(!root.contains(e.target)) closeMenu();
+    });
+  }
+
+  if(SETTINGS.closeOnEscape){
+    document.addEventListener("keydown", function(e){
+      if(e.key === "Escape" && root.classList.contains("open")){
+        closeMenu(true);
+      }
+    });
+  }
+})();
+</script>`;
+}
