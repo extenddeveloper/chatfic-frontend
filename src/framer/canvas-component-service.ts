@@ -420,6 +420,39 @@ export default function Chatfic(props: ChatficProps) {
         animation: "cfFadeIn .22s ease both",
     }
 
+    const headerWrapStyle: React.CSSProperties = {
+        background: headerGradient,
+    }
+    const greetingPosStyle: React.CSSProperties = {
+        bottom: isBottom ? 70 : "auto",
+        top: !isBottom ? 70 : "auto",
+        right: isRight ? 0 : "auto",
+        left: !isRight ? 0 : "auto",
+    }
+    const buttonsContainerStyle: React.CSSProperties = {
+        bottom: isBottom ? 68 : "auto",
+        top: !isBottom ? 68 : "auto",
+        right: isRight ? 0 : "auto",
+        left: !isRight ? 0 : "auto",
+        ...(layout === "grid"
+            ? {
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, auto)",
+                  alignItems: "center",
+              }
+            : layout === "horizontal"
+            ? {
+                  display: "flex",
+                  flexDirection: isRight ? "row-reverse" : "row",
+                  alignItems: "center",
+              }
+            : {
+                  display: "flex",
+                  flexDirection: isBottom ? "column-reverse" : "column",
+                  alignItems: isRight ? "flex-end" : "flex-start",
+              }),
+    }
+
     return (
         <div ref={containerRef} style={containerStyle}>
             <style>{\`
@@ -429,15 +462,17 @@ export default function Chatfic(props: ChatficProps) {
               @keyframes cfPulse { 0%, 100% { transform: scale(1); box-shadow: 0 12px 30px rgba(0,0,0,0.25); } 50% { transform: scale(1.05); box-shadow: 0 16px 36px rgba(0,0,0,0.35); } }
               @keyframes cfSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-              a.cf-channel-btn, .cf-channel-btn {
+              a.cf-channel-btn, .cf-channel-btn, a.cf-channel-btn:link, a.cf-channel-btn:visited, a.cf-channel-btn:hover, a.cf-channel-btn:active {
                 width: 44px !important;
                 height: 44px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 overflow: hidden !important;
+                color: #ffffff !important;
+                text-decoration: none !important;
               }
-              a.cf-channel-btn svg, .cf-channel-btn svg, a svg {
+              a.cf-channel-btn svg, .cf-channel-btn svg, a svg, .cf-canvas-icon-inner svg {
                 width: 22px !important;
                 height: 22px !important;
                 max-width: 22px !important;
@@ -446,6 +481,11 @@ export default function Chatfic(props: ChatficProps) {
                 min-height: 22px !important;
                 display: block !important;
                 margin: auto !important;
+                fill: #ffffff !important;
+                color: #ffffff !important;
+              }
+              a.cf-channel-btn svg path, .cf-channel-btn svg path, .cf-canvas-icon-inner svg path {
+                fill: #ffffff !important;
               }
               button.cf-main-btn svg {
                 width: 24px !important;
@@ -488,6 +528,232 @@ export default function Chatfic(props: ChatficProps) {
                 display: block !important;
                 margin: 0 !important;
               }
+
+              .cf-icon-rotator {
+                width: 24px !important;
+                height: 24px !important;
+                display: grid !important;
+                place-items: center !important;
+                transition: transform 0.25s ease !important;
+                flex-shrink: 0 !important;
+              }
+              .cf-icon-rotator.is-open {
+                transform: rotate(45deg) !important;
+              }
+              .cf-pill-text {
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                white-space: nowrap !important;
+              }
+              .cf-badge-counter {
+                position: absolute !important;
+                top: -2px !important;
+                right: -2px !important;
+                min-width: 18px !important;
+                height: 18px !important;
+                padding: 0 4px !important;
+                border-radius: 999px !important;
+                background: #ef4444 !important;
+                color: #ffffff !important;
+                border: 2px solid #ffffff !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                display: grid !important;
+                place-items: center !important;
+              }
+              .cf-canvas-greeting {
+                position: absolute !important;
+                background-color: #ffffff !important;
+                color: #111827 !important;
+                padding: 10px 14px !important;
+                border-radius: 14px !important;
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.18) !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 10px !important;
+                white-space: nowrap !important;
+                width: max-content !important;
+                max-width: 320px !important;
+                z-index: 100 !important;
+              }
+              .cf-canvas-greeting-close {
+                border: none !important;
+                background: transparent !important;
+                cursor: pointer !important;
+                font-size: 16px !important;
+                line-height: 1 !important;
+                color: #9ca3af !important;
+                padding: 0 !important;
+              }
+              .cf-canvas-modal-header {
+                color: #ffffff !important;
+                padding: 20px 18px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 6px !important;
+              }
+              .cf-canvas-modal-top {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+              }
+              .cf-canvas-modal-h3 {
+                margin: 0 !important;
+                font-size: 18px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+              }
+              .cf-canvas-modal-p {
+                margin: 0 !important;
+                font-size: 13px !important;
+                opacity: 0.92 !important;
+                line-height: 1.4 !important;
+              }
+              .cf-canvas-response-badge {
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                background: rgba(255,255,255,0.22) !important;
+                padding: 3px 10px !important;
+                border-radius: 999px !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                width: max-content !important;
+                margin-top: 4px !important;
+              }
+              .cf-canvas-agents-wrap {
+                padding: 14px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                max-height: 340px !important;
+                overflow-y: auto !important;
+              }
+              .cf-canvas-agent-card {
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+                padding: 10px 12px !important;
+                border-radius: 14px !important;
+                background-color: #f9fafb !important;
+                border: 1px solid #f3f4f6 !important;
+                cursor: pointer !important;
+              }
+              .cf-canvas-agent-av-wrap {
+                position: relative !important;
+                width: 42px !important;
+                height: 42px !important;
+                flex-shrink: 0 !important;
+              }
+              .cf-canvas-agent-av-img {
+                width: 42px !important;
+                height: 42px !important;
+                border-radius: 50% !important;
+                object-fit: cover !important;
+              }
+              .cf-canvas-agent-av-badge {
+                position: absolute !important;
+                bottom: -2px !important;
+                right: -2px !important;
+                width: 17px !important;
+                height: 17px !important;
+                border-radius: 50% !important;
+                display: grid !important;
+                place-items: center !important;
+                border: 2px solid #ffffff !important;
+                color: #ffffff !important;
+              }
+              .cf-canvas-agent-av-badge svg {
+                width: 10px !important;
+                height: 10px !important;
+                display: block !important;
+                fill: #ffffff !important;
+                color: #ffffff !important;
+              }
+              .cf-canvas-agent-av-badge svg path {
+                fill: #ffffff !important;
+              }
+              .cf-canvas-agent-info {
+                flex: 1 !important;
+                min-width: 0 !important;
+              }
+              .cf-canvas-agent-name {
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                color: #111827 !important;
+              }
+              .cf-canvas-agent-role {
+                font-size: 12px !important;
+                color: #6b7280 !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+              }
+              .cf-canvas-chat-wrap {
+                padding: 16px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 14px !important;
+              }
+              .cf-canvas-chat-bubble {
+                background-color: #f3f4f6 !important;
+                color: #1f2937 !important;
+                padding: 12px 14px !important;
+                border-radius: 16px 16px 16px 4px !important;
+                font-size: 13px !important;
+                line-height: 1.45 !important;
+              }
+              .cf-canvas-chat-input {
+                width: 100% !important;
+                padding: 10px 12px !important;
+                border-radius: 12px !important;
+                border: 1px solid #e5e7eb !important;
+                font-size: 13px !important;
+                outline: none !important;
+                box-sizing: border-box !important;
+              }
+              .cf-canvas-start-btn {
+                color: #ffffff !important;
+                border-radius: 999px !important;
+                padding: 12px 20px !important;
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.16) !important;
+                display: block !important;
+              }
+              .cf-canvas-buttons-container {
+                position: absolute !important;
+                z-index: 90 !important;
+                gap: 10px !important;
+              }
+              .cf-canvas-channel-item {
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+              }
+              .cf-canvas-channel-label {
+                background-color: #ffffff !important;
+                color: #111827 !important;
+                padding: 4px 9px !important;
+                border-radius: 6px !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+                white-space: nowrap !important;
+              }
+              .cf-canvas-icon-inner {
+                width: 22px !important;
+                height: 22px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-shrink: 0 !important;
+                overflow: hidden !important;
+              }
             \`}</style>
             <button
                 type="button"
@@ -502,15 +768,7 @@ export default function Chatfic(props: ChatficProps) {
                 aria-expanded={isOpen}
             >
                 <div
-                    style={{
-                        width: 24,
-                        height: 24,
-                        display: "grid",
-                        placeItems: "center",
-                        transition: "transform 0.25s ease",
-                        transform: isOpen ? "rotate(45deg)" : "none",
-                        flexShrink: 0,
-                    }}
+                    className={"cf-icon-rotator" + (isOpen ? " is-open" : "")}
                     dangerouslySetInnerHTML={{
                         __html: isOpen
                             ? '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
@@ -518,71 +776,24 @@ export default function Chatfic(props: ChatficProps) {
                     }}
                 />
                 {hasPillLabel ? (
-                    <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <span className="cf-pill-text">
                         {isOpen ? "Close" : launcherText}
                     </span>
                 ) : null}
                 {showBadge && !isOpen ? (
-                    <span
-                        style={{
-                            position: "absolute",
-                            top: -2,
-                            right: -2,
-                            minWidth: 18,
-                            height: 18,
-                            padding: "0 4px",
-                            borderRadius: 999,
-                            background: "#ef4444",
-                            color: "#ffffff",
-                            border: "2px solid #ffffff",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            display: "grid",
-                            placeItems: "center",
-                        }}
-                    >
+                    <span className="cf-badge-counter">
                         {badgeText}
                     </span>
                 ) : null}
             </button>
 
             {greetingEnabled && !greetingDismissed && !isOpen ? (
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: isBottom ? 70 : "auto",
-                        top: !isBottom ? 70 : "auto",
-                        right: isRight ? 0 : "auto",
-                        left: !isRight ? 0 : "auto",
-                        backgroundColor: "#ffffff",
-                        color: "#111827",
-                        padding: "10px 14px",
-                        borderRadius: 14,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 10,
-                        whiteSpace: "nowrap",
-                        width: "max-content",
-                        maxWidth: 320,
-                        zIndex: 100,
-                    }}
-                >
+                <div className="cf-canvas-greeting" style={greetingPosStyle}>
                     <span>{greetingText}</span>
                     <button
                         type="button"
+                        className="cf-canvas-greeting-close"
                         onClick={() => setGreetingDismissed(true)}
-                        style={{
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            fontSize: 16,
-                            lineHeight: 1,
-                            color: "#9ca3af",
-                            padding: 0,
-                        }}
                     >
                         x
                     </button>
@@ -591,17 +802,8 @@ export default function Chatfic(props: ChatficProps) {
 
             {isOpen && widgetMode === "modal" ? (
                 <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-                    <div
-                        style={{
-                            background: headerGradient,
-                            color: "#ffffff",
-                            padding: "20px 18px",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                        }}
-                    >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div className="cf-canvas-modal-header" style={headerWrapStyle}>
+                        <div className="cf-canvas-modal-top">
                             {selectedAgent ? (
                                 <button
                                     type="button"
@@ -611,23 +813,6 @@ export default function Chatfic(props: ChatficProps) {
                                         setSelectedAgent(null)
                                     }}
                                     aria-label="Back to agent list"
-                                    style={{
-                                        background: "rgba(255,255,255,0.22)",
-                                        border: "none",
-                                        borderRadius: "50%",
-                                        width: 28,
-                                        height: 28,
-                                        minWidth: 28,
-                                        minHeight: 28,
-                                        color: "#ffffff",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        padding: 0,
-                                        margin: 0,
-                                        boxSizing: "border-box",
-                                    }}
                                 >
                                     <svg
                                         width="11"
@@ -638,7 +823,6 @@ export default function Chatfic(props: ChatficProps) {
                                         strokeWidth="2.2"
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
-                                        style={{ display: "block" }}
                                     >
                                         <path d="M9.5 4L5.5 8l4 4" />
                                     </svg>
@@ -653,24 +837,6 @@ export default function Chatfic(props: ChatficProps) {
                                     setSelectedAgent(null)
                                 }}
                                 aria-label="Close chat"
-                                style={{
-                                    background: "rgba(255,255,255,0.22)",
-                                    border: "none",
-                                    borderRadius: "50%",
-                                    width: 28,
-                                    height: 28,
-                                    minWidth: 28,
-                                    minHeight: 28,
-                                    color: "#ffffff",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: 0,
-                                    margin: 0,
-                                    marginLeft: "auto",
-                                    boxSizing: "border-box",
-                                }}
                             >
                                 <svg
                                     width="11"
@@ -681,33 +847,19 @@ export default function Chatfic(props: ChatficProps) {
                                     strokeWidth="2.2"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    style={{ display: "block" }}
                                 >
                                     <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
                                 </svg>
                             </button>
                         </div>
-                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
+                        <h3 className="cf-canvas-modal-h3">
                             {selectedAgent ? selectedAgent.name : modalTitle}
                         </h3>
-                        <p style={{ margin: 0, fontSize: 13, opacity: 0.92, lineHeight: 1.4 }}>
+                        <p className="cf-canvas-modal-p">
                             {selectedAgent ? selectedAgent.role : modalSubtitle}
                         </p>
                         {!selectedAgent && modalResponseTime ? (
-                            <span
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    background: "rgba(255,255,255,0.22)",
-                                    padding: "3px 10px",
-                                    borderRadius: 999,
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    width: "max-content",
-                                    marginTop: 4,
-                                }}
-                            >
+                            <span className="cf-canvas-response-badge">
                                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.2l2.2 1.3"/></svg>
                                 <span>{modalResponseTime}</span>
                             </span>
@@ -715,90 +867,58 @@ export default function Chatfic(props: ChatficProps) {
                     </div>
 
                     {!selectedAgent ? (
-                        <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                            {agents.map((agent: any) => (
-                                <div
-                                    key={agent.id}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setSelectedAgent(agent)
-                                        setCustomMessage(agent.message || "")
-                                    }}
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 12,
-                                        padding: "10px 12px",
-                                        borderRadius: 14,
-                                        backgroundColor: "#f9fafb",
-                                        border: "1px solid #f3f4f6",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    <div style={{ position: "relative", width: 42, height: 42, flexShrink: 0 }}>
-                                        <img
-                                            src={agent.avatar}
-                                            alt={agent.name}
-                                            style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }}
-                                        />
-                                        <span
-                                            style={{
-                                                position: "absolute",
-                                                bottom: -2,
-                                                right: -2,
-                                                width: 17,
-                                                height: 17,
-                                                borderRadius: "50%",
-                                                background: agent.color,
-                                                display: "grid",
-                                                placeItems: "center",
-                                                border: "2px solid #ffffff",
-                                                color: "#ffffff",
-                                            }}
-                                            dangerouslySetInnerHTML={{ __html: ICONS[agent.channelId] || "" }}
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{agent.name}</div>
-                                        <div style={{ fontSize: 12, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                            {agent.role}
+                        <div className="cf-canvas-agents-wrap">
+                            {agents.map((agent: any) => {
+                                const agentBadgeBgStyle: React.CSSProperties = {
+                                    background: agent.color,
+                                }
+                                return (
+                                    <div
+                                        key={agent.id}
+                                        className="cf-canvas-agent-card"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedAgent(agent)
+                                            setCustomMessage(agent.message || "")
+                                        }}
+                                    >
+                                        <div className="cf-canvas-agent-av-wrap">
+                                            <img
+                                                src={agent.avatar}
+                                                alt={agent.name}
+                                                className="cf-canvas-agent-av-img"
+                                            />
+                                            <span
+                                                className="cf-canvas-agent-av-badge"
+                                                style={agentBadgeBgStyle}
+                                                dangerouslySetInnerHTML={{ __html: ICONS[agent.channelId] || "" }}
+                                            />
                                         </div>
+                                        <div className="cf-canvas-agent-info">
+                                            <div className="cf-canvas-agent-name">{agent.name}</div>
+                                            <div className="cf-canvas-agent-role">
+                                                {agent.role}
+                                            </div>
+                                        </div>
+                                        <span>
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5L10.5 8L6 12.5"/></svg>
+                                        </span>
                                     </div>
-                                    <span style={{ display: "inline-flex", alignItems: "center" }}>
-                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5L10.5 8L6 12.5"/></svg>
-                                    </span>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
-                        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-                            <div
-                                style={{
-                                    backgroundColor: "#f3f4f6",
-                                    color: "#1f2937",
-                                    padding: "12px 14px",
-                                    borderRadius: "16px 16px 16px 4px",
-                                    fontSize: 13,
-                                    lineHeight: 1.45,
-                                }}
-                            >
+                        <div className="cf-canvas-chat-wrap">
+                            <div className="cf-canvas-chat-bubble">
                                 {modalChatBubble || selectedAgent.message || "We typically reply within a few minutes. How can we help you today?"}
                             </div>
                             <input
                                 type="text"
+                                className="cf-canvas-chat-input"
                                 placeholder={selectedAgent.message ? selectedAgent.message : "Type your message..."}
                                 maxLength={500}
                                 value={customMessage}
                                 onChange={(e) => setCustomMessage(e.target.value)}
-                                style={{
-                                    width: "100%",
-                                    padding: "10px 12px",
-                                    borderRadius: 12,
-                                    border: "1px solid #e5e7eb",
-                                    fontSize: 13,
-                                    outline: "none",
-                                    boxSizing: "border-box",
-                                }}
                             />
                             <a
                                 href={(() => {
@@ -820,24 +940,14 @@ export default function Chatfic(props: ChatficProps) {
                                 })()}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                className="cf-canvas-start-btn"
+                                style={headerWrapStyle}
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     if (closeAfterClick) {
                                         setIsOpen(false)
                                         setSelectedAgent(null)
                                     }
-                                }}
-                                style={{
-                                    background: headerGradient,
-                                    color: "#ffffff",
-                                    borderRadius: 999,
-                                    padding: "12px 20px",
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    textAlign: "center",
-                                    textDecoration: "none",
-                                    boxShadow: "0 8px 20px rgba(0,0,0,0.16)",
-                                    display: "block",
                                 }}
                             >
                                 {modalStartChatText}
@@ -848,99 +958,45 @@ export default function Chatfic(props: ChatficProps) {
             ) : null}
 
             {isOpen && widgetMode === "buttons" ? (
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: isBottom ? 68 : "auto",
-                        top: !isBottom ? 68 : "auto",
-                        right: isRight ? 0 : "auto",
-                        left: !isRight ? 0 : "auto",
-                        zIndex: 90,
-                        gap: 10,
-                        ...(layout === "grid"
-                            ? {
-                                  display: "grid",
-                                  gridTemplateColumns: "repeat(2, auto)",
-                                  alignItems: "center",
-                              }
-                            : layout === "horizontal"
-                            ? {
-                                  display: "flex",
-                                  flexDirection: isRight ? "row-reverse" : "row",
-                                  alignItems: "center",
-                              }
-                            : {
-                                  display: "flex",
-                                  flexDirection: isBottom ? "column-reverse" : "column",
-                                  alignItems: isRight ? "flex-end" : "flex-start",
-                              }),
-                    }}
-                >
-                    {channels.map((channel) => (
-                        <div
-                            key={channel.id}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                flexDirection: isRight ? "row-reverse" : "row",
-                            }}
-                        >
-                            <a
-                                href={channel.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => {
-                                    if (closeAfterClick) setIsOpen(false)
-                                }}
-                                className="cf-channel-btn"
-                                style={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: radius,
-                                    backgroundColor: channel.color,
-                                    color: "#ffffff",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
-                                    textDecoration: "none",
-                                    flexShrink: 0,
-                                    overflow: "hidden",
-                                    padding: 0,
-                                }}
+                <div className="cf-canvas-buttons-container" style={buttonsContainerStyle}>
+                    {channels.map((channel) => {
+                        const channelItemStyle: React.CSSProperties = {
+                            flexDirection: isRight ? "row-reverse" : "row",
+                        }
+                        const channelBtnStyle: React.CSSProperties = {
+                            borderRadius: radius,
+                            backgroundColor: channel.color,
+                            color: "#ffffff",
+                        }
+                        return (
+                            <div
+                                key={channel.id}
+                                className="cf-canvas-channel-item"
+                                style={channelItemStyle}
                             >
-                                <div
-                                    style={{
-                                        width: 22,
-                                        height: 22,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        flexShrink: 0,
-                                        overflow: "hidden",
+                                <a
+                                    href={channel.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                        if (closeAfterClick) setIsOpen(false)
                                     }}
-                                    dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }}
-                                />
-                            </a>
-                            {showLabels ? (
-                                <span
-                                    style={{
-                                        backgroundColor: "#ffffff",
-                                        color: "#111827",
-                                        padding: "4px 9px",
-                                        borderRadius: 6,
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                                        whiteSpace: "nowrap",
-                                    }}
+                                    className="cf-channel-btn"
+                                    style={channelBtnStyle}
                                 >
-                                    {channel.label}
-                                </span>
-                            ) : null}
-                        </div>
-                    ))}
+                                    <div
+                                        className="cf-canvas-icon-inner"
+                                        dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }}
+                                    />
+                                </a>
+                                {showLabels ? (
+                                    <span className="cf-canvas-channel-label">
+                                        {channel.label}
+                                    </span>
+                                ) : null}
+                            </div>
+                        )
+                    })}
                 </div>
             ) : null}
         </div>

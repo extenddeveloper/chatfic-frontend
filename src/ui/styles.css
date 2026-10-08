@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
 /* Chatfic Framer Plugin Design System - Supporting Full Dark & Light Modes */
 
 :root,
@@ -5,6 +7,8 @@ body,
 .app,
 .app.dark,
 [data-framer-theme="dark"] {
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-body: "DM Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Tahoma, sans-serif;
     --cf-bg: #141414;
     --cf-bg-secondary: #1c1c1e;
     --cf-bg-tertiary: #252528;
@@ -200,14 +204,15 @@ button.cf-theme-toggle:hover {
     box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
 }
 
-/* Tab Bar - Segmented Control (5 Equal Columns, No Wrapping) */
+/* Tab Bar - Left Aligned Tabs + Right Profile Icon */
 .cf-tabs {
     display: flex !important;
-    gap: 3px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     background: var(--cf-bg-tertiary);
-    padding: 3px;
+    padding: 3px 4px !important;
     border-radius: 10px;
-    margin: 12px 14px 4px;
+    margin: 10px 14px 4px;
     position: sticky;
     top: 57px;
     z-index: 15;
@@ -215,15 +220,21 @@ button.cf-theme-toggle:hover {
     box-sizing: border-box;
 }
 
+.cf-tabs-list {
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+}
+
 button.cf-tab {
     all: unset !important;
     box-sizing: border-box !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    flex: 1 !important;
-    padding: 6px 3px !important;
-    font-size: 11px !important;
+    flex: 0 0 auto !important;
+    padding: 6px 14px !important;
+    font-size: 11.5px !important;
     font-weight: 500 !important;
     color: var(--cf-text-secondary) !important;
     border-radius: 7px !important;
@@ -243,10 +254,42 @@ button.cf-tab.active {
     color: var(--cf-text) !important;
     background: var(--cf-control) !important;
     font-weight: 600 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
 .app.light button.cf-tab.active {
+    background: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+button.cf-tab-profile {
+    all: unset !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    color: var(--cf-text-secondary) !important;
+    border-radius: 7px !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    flex-shrink: 0 !important;
+}
+
+button.cf-tab-profile:hover {
+    color: var(--cf-text) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+button.cf-tab-profile.active {
+    color: var(--cf-text) !important;
+    background: var(--cf-control) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+.app.light button.cf-tab-profile.active {
     background: #ffffff !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
@@ -354,15 +397,33 @@ textarea.cf-textarea {
 input.cf-input,
 select.cf-input,
 select.cf-select {
-    height: 32px !important;
-    padding: 0 10px !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+}
+
+select.cf-input,
+select.cf-select {
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23708AFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    background-size: 14px !important;
+    padding-right: 32px !important;
+    cursor: pointer !important;
+}
+
+select option {
+    background-color: var(--cf-bg-secondary) !important;
+    color: var(--cf-text) !important;
 }
 
 textarea.cf-input,
 textarea.cf-textarea {
-    min-height: 60px !important;
+    min-height: 64px !important;
     height: auto !important;
-    padding: 8px 10px !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
     resize: vertical !important;
     white-space: pre-wrap !important;
 }
@@ -373,8 +434,8 @@ select.cf-input:focus,
 select.cf-select:focus,
 textarea.cf-input:focus,
 textarea.cf-textarea:focus {
-    border-color: var(--cf-tint) !important;
-    box-shadow: 0 0 0 1px var(--cf-tint) !important;
+    border-color: #5271ff !important;
+    box-shadow: 0 0 0 2px rgba(82, 113, 255, 0.25) !important;
 }
 
 .cf-input::placeholder,
@@ -500,6 +561,13 @@ button.cf-switch.is-on .cf-switch-thumb {
     max-width: 18px !important;
     max-height: 18px !important;
     display: block !important;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+
+.cf-channel-icon-badge svg path,
+.channel-badge svg path {
+    fill: #ffffff !important;
 }
 
 .cf-channel-meta {
@@ -955,10 +1023,10 @@ button.cf-agent-del-btn:hover {
 
 /* Action Buttons Footer - Sticky at bottom */
 .actions {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-    padding: 12px 14px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 10px 14px 8px !important;
     position: sticky !important;
     bottom: 0 !important;
     background: var(--cf-bg) !important;
@@ -1356,6 +1424,13 @@ button.cf-reset-link:hover {
 .preview-agent-channel-badge svg {
     width: 12px;
     height: 12px;
+    display: block;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+
+.preview-agent-channel-badge svg path {
+    fill: #ffffff !important;
 }
 
 /* Chat view inside preview modal */
@@ -1491,10 +1566,14 @@ button.cf-reset-link:hover {
     white-space: nowrap;
 }
 
-.preview-channel-btn {
+.preview-channel-btn,
+.preview-channel-btn:link,
+.preview-channel-btn:visited,
+.preview-channel-btn:hover,
+.preview-channel-btn:active {
     display: grid;
     place-items: center;
-    color: #ffffff;
+    color: #ffffff !important;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
     transition: transform 0.15s ease;
@@ -1509,7 +1588,14 @@ button.cf-reset-link:hover {
     height: 20px !important;
     max-width: 20px !important;
     max-height: 20px !important;
-    display: block;
+    display: block !important;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+
+.preview-channel-btn svg path,
+.preview-channel-btn path {
+    fill: #ffffff !important;
 }
 
 .preview-channel-btn.shape-circle {
@@ -1524,4 +1610,1211 @@ button.cf-reset-link:hover {
     border-radius: 999px;
     padding: 0 12px;
 }
+
+/* ==========================================================================
+   COMPANY FRAMER PLUGIN ECOSYSTEM STANDARDS
+   Primary-CTA, HeroCard, HelpRow, ProfilePage, and Zero-Inline-CSS Utilities
+   ========================================================================== */
+
+/* 1. Mandatory .primary-cta Double-Gradient Button Standard */
+.primary-cta {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600 !important;
+    letter-spacing: 0.15px;
+    line-height: 1;
+    width: 100%;
+    height: 38px;
+    padding: 0 16px;
+    background: linear-gradient(180deg, #5271ff 0%, #3b51b8 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px -2px rgba(82, 113, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    cursor: pointer;
+    box-sizing: border-box;
+    text-decoration: none;
+    user-select: none;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.primary-cta:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4761db 0%, #3448a6 100%) !important;
+    box-shadow: 0 4px 14px rgba(82, 113, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.primary-cta:active:not(:disabled) {
+    background: #3b51b8 !important;
+    transform: scale(0.985);
+    box-shadow: 0 1px 3px rgba(82, 113, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.primary-cta:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.primary-cta svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* 2. Mandatory .secondary-cta Button Standard (Figma Node 13085:7951 & 13030:281) */
+.secondary-cta {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500 !important;
+    letter-spacing: 0.15px;
+    line-height: 1;
+    height: 38px !important;
+    padding: 0 16px !important;
+    background: var(--cf-bg-tertiary) !important;
+    color: var(--cf-text) !important;
+    border: 1px solid var(--cf-border) !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    position: relative !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+    user-select: none !important;
+    outline: none !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.secondary-cta:hover:not(:disabled) {
+    background: var(--cf-control-hover) !important;
+    border-color: var(--cf-border-hover) !important;
+    color: var(--cf-text) !important;
+    transform: translateY(-1px);
+}
+
+.secondary-cta:active:not(:disabled) {
+    transform: scale(0.985) !important;
+    background: var(--cf-control) !important;
+}
+
+.secondary-cta:focus-visible {
+    outline: none !important;
+    border-color: var(--cf-tint) !important;
+    box-shadow: 0 0 0 3px var(--cf-focus-ring) !important;
+}
+
+.secondary-cta:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    transform: none !important;
+}
+
+.secondary-cta svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.app.light .secondary-cta {
+    background: #ededed !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #1b1f22 !important;
+}
+
+.app.light .secondary-cta:hover:not(:disabled) {
+    background: #f5f5f5 !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 2. Error Boundary Fallback Classes (Zero Inline CSS in main.tsx) */
+.cf-error-fallback {
+    padding: 24px;
+    font-family: inherit;
+    color: #ef4444;
+    background: #141414;
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cf-error-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cf-error-icon {
+    font-size: 20px;
+}
+
+.cf-error-title {
+    color: #ffffff;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cf-error-text {
+    color: #a1a1aa;
+    font-size: 12px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cf-error-btn {
+    margin-top: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #0099ff;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    width: fit-content;
+}
+
+/* 3. Hero Card Component (.cf-hero-card) */
+.cf-hero-card {
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: var(--cf-shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+
+.cf-hero-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.cf-hero-card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cf-hero-illustration {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    margin-top: -6px;
+    margin-right: -4px;
+}
+
+.cf-hero-illustration-svg {
+    display: block;
+}
+
+.cf-hero-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cf-hero-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cf-text);
+    margin: 0;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+}
+
+.cf-hero-card-desc {
+    font-size: 13px;
+    color: var(--cf-text-secondary);
+    margin: 0;
+    line-height: 1.45;
+}
+
+.cf-hero-card-extra {
+    width: 100%;
+}
+
+.cf-hero-config-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+}
+
+button.cf-hero-config-item {
+    all: unset;
+    box-sizing: border-box;
+    background: var(--cf-control);
+    border: 1px solid var(--cf-border);
+    border-radius: 9px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+button.cf-hero-config-item:hover {
+    background: var(--cf-control-hover);
+    border-color: var(--cf-tint);
+    transform: translateY(-1px);
+}
+
+.app.light button.cf-hero-config-item {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.app.light button.cf-hero-config-item:hover {
+    background: #f8fafc;
+    border-color: rgba(82, 113, 255, 0.35);
+}
+
+.cf-hero-config-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--cf-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.cf-hero-config-val {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cf-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cf-hero-cta {
+    width: 100%;
+    margin-top: 2px;
+    justify-content: center;
+}
+
+/* 4. Badge System */
+.cf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.cf-badge-brand {
+    background: rgba(82, 113, 255, 0.15);
+    color: #708aff;
+    border: 1px solid rgba(82, 113, 255, 0.3);
+}
+
+.cf-badge-pro {
+    background: rgba(139, 92, 246, 0.18);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+/* 5. Help Tiles Row (.cf-help-tile-row) */
+.cf-help-tile-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.cf-help-tile {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 8px;
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--cf-text);
+    transition: all 0.15s ease;
+}
+
+.cf-help-tile:hover {
+    border-color: var(--cf-tint);
+    background: var(--cf-bg-tertiary);
+    transform: translateY(-1px);
+}
+
+.cf-help-tile-icon-box {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    color: var(--cf-tint);
+}
+
+.cf-help-tile-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+}
+
+.cf-help-tile-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cf-text-secondary);
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 6. Quick Summary Card & Stats */
+.cf-summary-card {
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cf-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cf-summary-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cf-text);
+    margin: 0;
+}
+
+.cf-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.cf-summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 4px;
+    background: var(--cf-bg);
+    border: 1px solid var(--cf-border);
+    border-radius: 8px;
+}
+
+.cf-summary-val {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cf-tint);
+}
+
+.cf-summary-lbl {
+    font-size: 10px;
+    color: var(--cf-text-secondary);
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* 7. Marketplace Card (.cf-marketplace-card) */
+.cf-marketplace-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s ease;
+}
+
+.cf-marketplace-card:hover {
+    border-color: var(--cf-tint);
+    background: var(--cf-bg-tertiary);
+}
+
+.cf-marketplace-card-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--cf-tint-subtle);
+    color: var(--cf-tint);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.cf-marketplace-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cf-marketplace-card-name {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+
+.cf-marketplace-card-desc {
+    margin: 0;
+    font-size: 11px;
+    color: var(--cf-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cf-marketplace-card-open {
+    color: var(--cf-text-tertiary);
+    flex-shrink: 0;
+}
+
+/* 8. Profile Page Styles (.cf-profile-page) */
+.cf-profile-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px;
+}
+
+.cf-profile-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--cf-border);
+}
+
+.cf-btn-back {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--cf-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cf-btn-back:hover {
+    color: var(--cf-text);
+    background: var(--cf-bg-tertiary);
+}
+
+.cf-profile-top-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+
+.cf-profile-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 8px;
+}
+
+.cf-profile-avatar-wrap {
+    position: relative;
+}
+
+.cf-profile-avatar-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, #5271ff 0%, #8b5cf6 100%);
+    display: grid;
+    place-items: center;
+}
+
+.cf-profile-avatar-circle {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--cf-bg-tertiary);
+    color: var(--cf-text);
+    font-size: 22px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+}
+
+.cf-profile-pro-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 2px solid var(--cf-bg);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.cf-profile-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+}
+
+.cf-profile-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-profile-email {
+    font-size: 12px;
+    color: var(--cf-text-secondary);
+}
+
+.cf-profile-card {
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.cf-profile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cf-profile-card-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--cf-text-tertiary);
+    letter-spacing: 0.5px;
+}
+
+.cf-profile-plan-title {
+    margin: 2px 0 0 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-profile-features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid var(--cf-border);
+    border-bottom: 1px solid var(--cf-border);
+}
+
+.cf-profile-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--cf-text-secondary);
+}
+
+.cf-feature-check {
+    color: #22c55e;
+    flex-shrink: 0;
+}
+
+.cf-profile-footer-info {
+    text-align: center;
+    font-size: 11px;
+    color: var(--cf-text-tertiary);
+    margin-top: 8px;
+}
+
+/* 9. Profile Icon Button in Navbar */
+.cf-btn-profile {
+    all: unset;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--cf-text-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.cf-btn-profile:hover,
+.cf-btn-profile.active {
+    color: var(--cf-text);
+    background: var(--cf-bg-tertiary);
+    border-color: var(--cf-border);
+}
+
+/* 10. Builder Sub-Tabs Navigation */
+.cf-builder-subtabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: var(--cf-bg-secondary);
+    padding: 3px;
+    border-radius: 9px;
+    margin-bottom: 14px;
+    border: 1px solid var(--cf-border);
+}
+
+.cf-builder-subtab {
+    all: unset;
+    box-sizing: border-box;
+    padding: 6px 4px;
+    font-size: 11.5px;
+    font-weight: 500;
+    text-align: center;
+    border-radius: 6px;
+    color: var(--cf-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cf-builder-subtab:hover {
+    color: var(--cf-text);
+}
+
+.cf-builder-subtab.active {
+    color: var(--cf-text);
+    background: var(--cf-bg);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 11. Channel Specific Colors (Zero-Inline-CSS for Channel Badges) */
+.cf-ch-whatsapp { background-color: #25d366 !important; }
+.cf-ch-messenger { background-color: #0084ff !important; }
+.cf-ch-telegram { background-color: #229ed9 !important; }
+.cf-ch-instagram { background-color: #e1306c !important; }
+.cf-ch-tiktok { background-color: #111111 !important; }
+.cf-ch-wechat { background-color: #07c160 !important; }
+.cf-ch-viber { background-color: #7360f2 !important; }
+.cf-ch-line { background-color: #06c755 !important; }
+.cf-ch-signal { background-color: #3a76f0 !important; }
+.cf-ch-phone { background-color: #111827 !important; }
+.cf-ch-email { background-color: #ea4335 !important; }
+.cf-ch-custom { background-color: #111827 !important; }
+
+/* 12. Clean Utilities Replacing Inline Styles in App.tsx */
+.cf-hidden-file-input {
+    display: none !important;
+}
+
+.cf-flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cf-flex-end-gap-8 {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.cf-flex-center-gap-6 {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.cf-flex-center-gap-10 {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.cf-flex-col-gap-14 {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.cf-input-w80 {
+    width: 80px !important;
+}
+
+.cf-input-w60 {
+    width: 60px !important;
+}
+
+.cf-footer-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+}
+
+.cf-text-sm-bold {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-text-sm-semibold {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+
+.cf-text-xs-secondary {
+    font-size: 11px;
+    color: var(--cf-text-secondary);
+}
+
+.cf-badge-sm {
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+}
+
+.cf-btn-inline-flex {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+}
+
+/* Mode Card Selectors */
+.cf-mode-card {
+    cursor: pointer;
+    text-align: left;
+    padding: 12px;
+}
+
+.cf-mode-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.cf-mode-card-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--cf-tint);
+}
+
+.cf-mode-card-title {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cf-mode-card-desc {
+    font-size: 11px;
+    color: var(--cf-text-secondary);
+}
+
+/* Channel Bullet */
+.cf-channel-bullet {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Agent Configure Details */
+.cf-agent-detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.cf-agent-detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 4px;
+}
+
+.cf-agent-detail-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cf-agent-detail-lbl {
+    font-size: 11px;
+    color: var(--cf-text);
+}
+
+.cf-add-member-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cf-add-member-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-btn-add-agent {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.cf-mt-6 {
+    margin-top: 6px !important;
+}
+
+.cf-mt-8 {
+    margin-top: 8px !important;
+}
+
+/* 13. Preview Modal & Chat Styles (Zero Inline CSS) */
+.cf-theme-grad-whatsapp {
+    background: linear-gradient(135deg, #128c7e, #25d366) !important;
+}
+
+.cf-theme-grad-messenger {
+    background: linear-gradient(135deg, #0078ff, #00c6ff) !important;
+}
+
+.cf-theme-grad-telegram {
+    background: linear-gradient(135deg, #229ed9, #0088cc) !important;
+}
+
+.cf-theme-grad-instagram {
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045) !important;
+}
+
+.cf-theme-grad-tiktok {
+    background: linear-gradient(135deg, #010101, #25f4ee, #fe2c55) !important;
+}
+
+.cf-theme-grad-wechat {
+    background: linear-gradient(135deg, #07c160, #10ad66) !important;
+}
+
+.cf-theme-grad-dark {
+    background: linear-gradient(135deg, #18181b, #27272a) !important;
+}
+
+.cf-theme-grad-custom {
+    background: linear-gradient(135deg, #6366f1, #a855f7) !important;
+}
+
+.preview-modal-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.preview-chat-back-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-chat-agent-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.preview-chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.preview-chat-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.preview-chat-role {
+    font-size: 10px;
+    color: var(--cf-text-secondary);
+}
+
+.preview-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--cf-text-tertiary);
+    letter-spacing: 0.05em;
+}
+
+.preview-start-btn-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* 14. Home Tab Summary Card */
+.cf-home-summary-card {
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cf-home-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cf-home-summary-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-home-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.cf-home-summary-item {
+    background: var(--cf-bg);
+    border: 1px solid var(--cf-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cf-home-summary-item-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--cf-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.cf-home-summary-item-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+.cf-home-summary-action {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 2px;
+}
+
+.cf-btn-link-sm {
+    all: unset;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--cf-tint);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s ease;
+}
+
+.cf-btn-link-sm:hover {
+    opacity: 0.8;
+}
+
+
+
+/* 16. More from Framefic Section & Cards (Framer Marketplace) */
+.cf-marketplace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cf-marketplace-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    text-decoration: none;
+    transition: all 0.18s ease;
+    box-sizing: border-box;
+}
+
+.cf-marketplace-card:hover {
+    background: var(--cf-control-hover);
+    border-color: var(--cf-border-hover);
+    transform: translateY(-1px);
+}
+
+.cf-marketplace-card-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.cf-marketplace-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cf-marketplace-card-name {
+    margin: 0 0 2px 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cf-text);
+    line-height: 1.3;
+}
+
+.cf-marketplace-card-desc {
+    margin: 0;
+    font-size: 11px;
+    color: var(--cf-text-secondary);
+    line-height: 1.35;
+}
+
+.cf-marketplace-card-open {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: var(--cf-bg-tertiary);
+    border: 1px solid var(--cf-border);
+    display: grid;
+    place-items: center;
+    color: var(--cf-text-secondary);
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.cf-marketplace-card:hover .cf-marketplace-card-open {
+    color: var(--cf-text);
+    background: var(--cf-control);
+    border-color: var(--cf-border-hover);
+}
+
+.cf-more-framefic-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--cf-tint);
+    text-decoration: none;
+    margin-top: 10px;
+    padding: 4px 0;
+    transition: opacity 0.15s ease;
+}
+
+.cf-more-framefic-footer-link:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+/* 17. Shell Geometry Footer */
+.cf-shell-footer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px solid var(--cf-border);
+}
+
+.cf-shell-company-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cf-text-secondary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.cf-shell-company-link:hover {
+    color: var(--cf-tint);
+}
+
+.cf-shell-version {
+    font-size: 10.5px;
+    color: var(--cf-text-tertiary);
+}
+
+
+
 

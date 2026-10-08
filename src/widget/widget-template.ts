@@ -182,8 +182,8 @@ export function buildWidgetCode(config: ChatConfig): string {
 
     /* Launcher buttons */
     #\${ROOT_ID} .scb-button{width:\${SETTINGS.buttonSize}px;height:\${SETTINGS.buttonSize}px;display:grid;place-items:center;border:0;padding:0;cursor:pointer;text-decoration:none;color:#fff;background:var(--scb-color);box-shadow:\${SETTINGS.shadow};transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;position:relative;flex:0 0 auto;outline:none}
-    #\${ROOT_ID} .scb-button:hover{transform:translateY(-2px) scale(1.04);filter:saturate(1.08)}
-    #\${ROOT_ID} .scb-button svg{width:\${SETTINGS.iconSize}px;height:\${SETTINGS.iconSize}px;display:block}
+    #\${ROOT_ID} .scb-button svg{width:\${SETTINGS.iconSize}px;height:\${SETTINGS.iconSize}px;display:block;fill:#ffffff !important;color:#ffffff !important}
+    #\${ROOT_ID} .scb-button svg path{fill:#ffffff !important}
     #\${ROOT_ID} .circle{border-radius:50%}
     #\${ROOT_ID} .rounded{border-radius:16px}
     #\${ROOT_ID} .pill{border-radius:999px;width:auto;min-width:\${SETTINGS.buttonSize}px;padding:0 18px}

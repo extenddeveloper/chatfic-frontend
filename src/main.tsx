@@ -24,41 +24,18 @@ class ErrorBoundary extends React.Component<
     render() {
         if (this.state.hasError) {
             return (
-                <div
-                    style={{
-                        padding: 24,
-                        fontFamily: "Inter, system-ui, sans-serif",
-                        color: "#ef4444",
-                        background: "#141414",
-                        minHeight: "100vh",
-                        boxSizing: "border-box",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 12,
-                    }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 20 }}>⚠️</span>
-                        <h3 style={{ color: "#ffffff", margin: 0, fontSize: 16 }}>Plugin Error</h3>
+                <div className="cf-error-fallback">
+                    <div className="cf-error-header">
+                        <span className="cf-error-icon">⚠️</span>
+                        <h3 className="cf-error-title">Plugin Error</h3>
                     </div>
-                    <p style={{ color: "#a1a1aa", fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                    <p className="cf-error-text">
                         {this.state.error?.message || "An unexpected error occurred while loading Chatfic."}
                     </p>
                     <button
+                        className="cf-error-btn"
                         onClick={() => {
                             window.location.reload()
-                        }}
-                        style={{
-                            marginTop: 8,
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            background: "#0099ff",
-                            color: "#ffffff",
-                            border: "none",
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            fontSize: 12,
-                            width: "fit-content",
                         }}
                     >
                         Reload Plugin
@@ -84,7 +61,6 @@ framer.showUI({
     position: "top right",
     width: 430,
     height: 760,
-    resizable: true,
 })
 
 const root = document.getElementById("root")

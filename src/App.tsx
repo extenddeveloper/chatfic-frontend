@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { framer } from "@framer/plugin"
-import { cloneDefaultConfig, MODAL_THEME_GRADIENTS, normalizeConfig } from "./core/config"
+import { cloneDefaultConfig, normalizeConfig } from "./core/config"
 import { loadConfig, saveConfig } from "./core/storage"
 import { getCanvasInstancesCount, insertCanvasComponent } from "./framer/canvas-component-service"
 import type { ChannelId, ChatAgent, ChatChannel, ChatConfig, ModalTheme } from "./types"
 import { Field } from "./ui/components/Field"
 import { Section } from "./ui/components/Section"
 import { Switch } from "./ui/components/Switch"
+import { HeroCard } from "./ui/components/HeroCard"
+import { HelpRow } from "./ui/components/HelpRow"
+import { ProfilePage } from "./ui/components/ProfilePage"
+import { FrameficCard } from "./ui/components/FrameficCard"
 import { ICONS, LAUNCHER_ICONS } from "./widget/icons"
 import { sanitizeAgent, sanitizeAvatarUrl, sanitizeChannel, sanitizeMultilineText, sanitizeText } from "./core/sanitize"
 import {
@@ -25,10 +29,16 @@ import {
     IconPlus,
     IconSun,
     IconMoon,
+    IconSparkles,
+    IconExternalLink,
+    IconPluginSlider,
+    IconPluginAnnouncement,
+    IconPluginConnect,
 } from "./ui/icons"
 import "./ui/styles.css"
 
-type Tab = "overview" | "modal" | "channels" | "design" | "behavior"
+type Tab = "home" | "builder" | "design" | "settings"
+type BuilderSubTab = "channels" | "agents"
 
 const AVATAR_PRESETS = [
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
@@ -110,7 +120,9 @@ export function App() {
         }
         return "dark"
     })
-    const [tab, setTab] = useState<Tab>("overview")
+    const [tab, setTab] = useState<Tab>("home")
+    const [builderSubTab, setBuilderSubTab] = useState<BuilderSubTab>("channels")
+    const [isProfileOpen, setIsProfileOpen] = useState(false)
     const [inserting, setInserting] = useState(false)
     const [canvasCount, setCanvasCount] = useState(0)
     const [previewOpen, setPreviewOpen] = useState(true)
@@ -130,7 +142,7 @@ export function App() {
     const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null)
     const [uploadingAgentId, setUploadingAgentId] = useState<string | null>(null)
 
-    // Automatic Canvas Theme Sync + Subscription (Read-only observer to prevent infinite mutation loops)
+    // Automatic Canvas Theme Sync + Subscription (Read-only observer)
     useEffect(() => {
         function readCanvasTheme() {
             const bodyTheme = document.body.getAttribute("data-framer-theme")
@@ -209,12 +221,10 @@ export function App() {
         [config.channels],
     )
 
-    const resolvedGradient = useMemo(() => {
-        if (config.modalTheme === "custom" && config.modalCustomGradient) {
-            return config.modalCustomGradient
-        }
-        return MODAL_THEME_GRADIENTS[config.modalTheme] || MODAL_THEME_GRADIENTS.whatsapp
-    }, [config.modalTheme, config.modalCustomGradient])
+    const resolvedGradientClass = useMemo(() => {
+        const key = config.modalTheme || "whatsapp"
+        return `cf-theme-grad-${key}`
+    }, [config.modalTheme])
 
     function updateConfig(patch: Partial<ChatConfig>) {
         setConfig((current) => normalizeConfig({ ...current, ...patch }))
@@ -257,7 +267,6 @@ export function App() {
             throw new Error("Image size should be less than 5MB.")
         }
 
-        // Try Framer Plugin API first
         if (typeof framer?.uploadImage === "function") {
             try {
                 const asset = await framer.uploadImage(file)
@@ -269,7 +278,6 @@ export function App() {
             }
         }
 
-        // Fallback to data URL
         return new Promise<string>((resolve, reject) => {
             const reader = new FileReader()
             reader.onload = () => resolve(reader.result as string)
@@ -366,7 +374,200 @@ export function App() {
         setMessage({ type: "info", text: "Settings restored to defaults." })
     }
 
-    const primaryColor = enabledChannels[0]?.color || config.buttonColor || "#25D366"
+    // Helper to get launcher button classes
+    const launcherShapeClass = "shape-" + (config.buttonShape || "circle")
+    const launcherSizeClass = "size-" + (config.buttonSize || 56)
+
+    // Render interactive simulation preview block
+    function renderPreview() {
+        return (
+            <div className="preview-container">
+                <div className="preview-toolbar">
+                    <span className="preview-pill">Live Simulation</span>
+                    <div className="preview-mode-switch">
+                        <button
+                            type="button"
+                            className={"preview-mode-btn " + (config.widgetMode === "modal" && previewOpen ? "active" : "")}
+                            onClick={() => {
+                                updateConfig({ widgetMode: "modal" })
+                                setPreviewOpen(true)
+                                setPreviewSelectedAgent(null)
+                            }}
+                        >
+                            Modal View
+                        </button>
+                        <button
+                            type="button"
+                            className={"preview-mode-btn " + (config.widgetMode === "buttons" && previewOpen ? "active" : "")}
+                            onClick={() => {
+                                updateConfig({ widgetMode: "buttons" })
+                                setPreviewOpen(true)
+                            }}
+                        >
+                            Button View
+                        </button>
+                    </div>
+                </div>
+
+                <div className="preview-viewport">
+                    <div className="preview-mock-page">
+                        <div className="preview-mock-line short" />
+                        <div className="preview-mock-line long" />
+                        <div className="preview-mock-line" />
+                        <div className="preview-mock-line short" />
+                    </div>
+
+                    <div className="preview-launcher-wrap">
+                        {config.widgetMode === "modal" && previewOpen ? (
+                            <div className="preview-modal-card">
+                                <div className={"preview-modal-header " + resolvedGradientClass}>
+                                    <div className="preview-modal-header-top">
+                                        <h4 className="preview-modal-title">{config.modalTitle || "Hi there!"}</h4>
+                                        <button
+                                            type="button"
+                                            className="preview-modal-close-btn"
+                                            onClick={() => setPreviewOpen(false)}
+                                        >
+                                            <IconX size={12} />
+                                        </button>
+                                    </div>
+                                    <p className="preview-modal-subtitle">
+                                        {config.modalSubtitle || "Welcome to our live chat! Feel free to ask any questions."}
+                                    </p>
+                                    <div className="preview-modal-badge">
+                                        <span className="preview-modal-dot" />
+                                        {config.modalResponseTime || "Typically replies in minutes"}
+                                    </div>
+                                </div>
+
+                                <div className="preview-modal-body">
+                                    {previewSelectedAgent ? (
+                                        <div className="preview-chat-view">
+                                            <button
+                                                type="button"
+                                                className="preview-chat-back preview-chat-back-wrap"
+                                                onClick={() => setPreviewSelectedAgent(null)}
+                                            >
+                                                <IconArrowLeft size={12} />
+                                                <span>All Team Members</span>
+                                            </button>
+                                            <div className="preview-chat-agent-info">
+                                                <img
+                                                    src={previewSelectedAgent.avatar}
+                                                    alt={previewSelectedAgent.name}
+                                                    className="preview-chat-avatar"
+                                                />
+                                                <div>
+                                                    <div className="preview-chat-name">
+                                                        {previewSelectedAgent.name}
+                                                    </div>
+                                                    <div className="preview-chat-role">
+                                                        {previewSelectedAgent.role}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="preview-chat-bubble">
+                                                {previewSelectedAgent.message || config.modalChatBubble || "We typically reply within a few minutes. How can we help you today?"}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={"preview-start-btn preview-start-btn-wrap " + resolvedGradientClass}
+                                                onClick={() => {
+                                                    const ch = config.channels.find((c) => c.id === previewSelectedAgent.channelId)
+                                                    const targetVal = previewSelectedAgent.value || ch?.value || "(Not configured)"
+                                                    setMessage({
+                                                        type: "info",
+                                                        text: `Simulated chat with ${previewSelectedAgent.name} via ${previewSelectedAgent.channelId} (${targetVal})!`,
+                                                    })
+                                                }}
+                                            >
+                                                <span>{config.modalStartChatText || "Start chat"}</span>
+                                                <IconArrowRight size={13} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className="preview-section-title">
+                                                Support Team
+                                            </span>
+                                            {config.agents.map((agent) => {
+                                                const chClass = `cf-ch-${agent.channelId}`
+                                                return (
+                                                    <div
+                                                        key={agent.id}
+                                                        className="preview-agent-card"
+                                                        onClick={() => setPreviewSelectedAgent(agent)}
+                                                        title="Click to preview agent chat screen"
+                                                    >
+                                                        <div className="preview-agent-avatar-wrap">
+                                                            <img src={agent.avatar} alt={agent.name} />
+                                                            {agent.online !== false && <span className="preview-agent-online-dot" />}
+                                                        </div>
+                                                        <div className="preview-agent-details">
+                                                            <span className="preview-agent-name">{agent.name}</span>
+                                                            <span className="preview-agent-role">
+                                                                {agent.role}
+                                                                {agent.value ? ` • ${agent.value}` : ""}
+                                                            </span>
+                                                        </div>
+                                                        <span
+                                                            className={"preview-agent-channel-badge " + chClass}
+                                                            dangerouslySetInnerHTML={{ __html: ICONS[agent.channelId] || "" }}
+                                                        />
+                                                    </div>
+                                                )
+                                            })}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {config.widgetMode === "buttons" && previewOpen ? (
+                            <div className={`preview-buttons-list layout-${config.layout}`}>
+                                {enabledChannels.map((channel) => (
+                                    <div key={channel.id} className="preview-channel-button-item">
+                                        {config.showLabels && (
+                                            <span className="preview-channel-label">{channel.label}</span>
+                                        )}
+                                        <div
+                                            className={`preview-channel-btn shape-${config.buttonShape} cf-ch-${channel.id}`}
+                                            title={channel.label}
+                                            onClick={() => {
+                                                setMessage({
+                                                    type: "info",
+                                                    text: `Opened ${channel.label} directly (${channel.value || "Configured"})!`,
+                                                })
+                                            }}
+                                        >
+                                            <span dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : null}
+
+                        {!previewOpen && config.greetingEnabled && (
+                            <div className="preview-greeting-pill">
+                                {config.greetingText || "Need help? Chat with us."}
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            className={`preview-main-btn ${launcherShapeClass} ${launcherSizeClass}`}
+                            onClick={() => setPreviewOpen(!previewOpen)}
+                        >
+                            <span dangerouslySetInnerHTML={{ __html: LAUNCHER_ICONS[config.launcherIcon || "chat"] || LAUNCHER_ICONS.chat }} />
+                            {config.showBadge && (
+                                <span className="preview-badge-pill">{config.badgeText || "1"}</span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className={"app " + themeMode}>
@@ -409,40 +610,56 @@ export function App() {
             </header>
 
             <nav className="cf-tabs">
+                <div className="cf-tabs-list">
+                    <button
+                        type="button"
+                        className={"cf-tab " + (!isProfileOpen && tab === "home" ? "active" : "")}
+                        onClick={() => {
+                            setIsProfileOpen(false)
+                            setTab("home")
+                        }}
+                    >
+                        Home
+                    </button>
+                    <button
+                        type="button"
+                        className={"cf-tab " + (!isProfileOpen && tab === "builder" ? "active" : "")}
+                        onClick={() => {
+                            setIsProfileOpen(false)
+                            setTab("builder")
+                        }}
+                    >
+                        Builder
+                    </button>
+                    <button
+                        type="button"
+                        className={"cf-tab " + (!isProfileOpen && tab === "design" ? "active" : "")}
+                        onClick={() => {
+                            setIsProfileOpen(false)
+                            setTab("design")
+                        }}
+                    >
+                        Design
+                    </button>
+                    <button
+                        type="button"
+                        className={"cf-tab " + (!isProfileOpen && tab === "settings" ? "active" : "")}
+                        onClick={() => {
+                            setIsProfileOpen(false)
+                            setTab("settings")
+                        }}
+                    >
+                        Settings
+                    </button>
+                </div>
                 <button
                     type="button"
-                    className={"cf-tab " + (tab === "overview" ? "active" : "")}
-                    onClick={() => setTab("overview")}
+                    className={"cf-tab-profile " + (isProfileOpen ? "active" : "")}
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    title="Account & Profile"
+                    aria-label="Account & Profile"
                 >
-                    Overview
-                </button>
-                <button
-                    type="button"
-                    className={"cf-tab " + (tab === "modal" ? "active" : "")}
-                    onClick={() => setTab("modal")}
-                >
-                    Chat Modal
-                </button>
-                <button
-                    type="button"
-                    className={"cf-tab " + (tab === "channels" ? "active" : "")}
-                    onClick={() => setTab("channels")}
-                >
-                    Channels
-                </button>
-                <button
-                    type="button"
-                    className={"cf-tab " + (tab === "design" ? "active" : "")}
-                    onClick={() => setTab("design")}
-                >
-                    Design
-                </button>
-                <button
-                    type="button"
-                    className={"cf-tab " + (tab === "behavior" ? "active" : "")}
-                    onClick={() => setTab("behavior")}
-                >
-                    Behavior
+                    <IconUser size={14} />
                 </button>
             </nav>
 
@@ -453,1268 +670,1207 @@ export function App() {
                     </div>
                 )}
 
-                {tab === "overview" ? (
+                {isProfileOpen ? (
+                    <ProfilePage onBack={() => setIsProfileOpen(false)} />
+                ) : (
                     <>
-                        <Section
-                            title="Widget Experience Mode"
-                            description="Choose how visitors interact when clicking your chat button."
-                        >
-                            <div className="cf-field-grid">
-                                 <div
-                                     className={"cf-theme-card " + (config.widgetMode === "modal" ? "active" : "")}
-                                     onClick={() => updateConfig({ widgetMode: "modal" })}
-                                     style={{ cursor: "pointer", textAlign: "left", padding: 12 }}
-                                 >
-                                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                                         <span style={{ display: "inline-flex", alignItems: "center", color: "var(--cf-tint)" }}>
-                                             <IconLayoutModal size={16} />
-                                         </span>
-                                         <strong style={{ fontSize: 12 }}>Live Chat Modal</strong>
-                                     </div>
-                                     <span style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                         Webflow-style popup window with team agents, response times &amp; chat preview.
-                                     </span>
-                                 </div>
-                                 <div
-                                     className={"cf-theme-card " + (config.widgetMode === "buttons" ? "active" : "")}
-                                     onClick={() => updateConfig({ widgetMode: "buttons" })}
-                                     style={{ cursor: "pointer", textAlign: "left", padding: 12 }}
-                                 >
-                                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                                         <span style={{ display: "inline-flex", alignItems: "center", color: "var(--cf-tint)" }}>
-                                             <IconLayoutButtons size={16} />
-                                         </span>
-                                         <strong style={{ fontSize: 12 }}>Icon Buttons</strong>
-                                     </div>
-                                     <span style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                         Classic floating icon list opening direct channel URLs.
-                                     </span>
-                                 </div>
-                             </div>
-                        </Section>
-
-                        <Section
-                            title="Interactive Live Preview"
-                            description="Test the interactive widget live. Click the button to toggle the window."
-                        >
-                            <div className="preview-container">
-                                <div className="preview-toolbar">
-                                    <span className="preview-pill">Live Simulation</span>
-                                    <div className="preview-mode-switch">
+                        {/* HOME TAB */}
+                        {tab === "home" && (
+                            <>
+                                <HeroCard
+                                    badgeLabel="Chat Widget"
+                                    badgeType="brand"
+                                    badgeIcon={<IconSparkles size={11} />}
+                                    statusBadge={
+                                        <div className={"status-badge " + (canvasCount > 0 ? "ok" : "")}>
+                                            <span className="status-dot" />
+                                            <span>{canvasCount > 0 ? `${canvasCount} on Canvas` : "Ready"}</span>
+                                        </div>
+                                    }
+                                    title="Welcome to Chatfic"
+                                    description="Live social chat and multi-channel contact widgets for Framer."
+                                    ctaLabel="Configure in Builder"
+                                    ctaIcon={<IconArrowRight size={14} />}
+                                    onCtaClick={() => {
+                                        setIsProfileOpen(false)
+                                        setTab("builder")
+                                    }}
+                                >
+                                    <div className="cf-hero-config-grid">
                                         <button
                                             type="button"
-                                            className={"preview-mode-btn " + (config.widgetMode === "modal" && previewOpen ? "active" : "")}
+                                            className="cf-hero-config-item"
                                             onClick={() => {
-                                                updateConfig({ widgetMode: "modal" })
-                                                setPreviewOpen(true)
-                                                setPreviewSelectedAgent(null)
+                                                setIsProfileOpen(false)
+                                                setTab("builder")
                                             }}
+                                            title="Current widget mode"
                                         >
-                                            Modal View
+                                            <span className="cf-hero-config-label">Mode</span>
+                                            <span className="cf-hero-config-val">
+                                                {config.widgetMode === "modal" ? "Live Modal" : "Buttons"}
+                                            </span>
                                         </button>
                                         <button
                                             type="button"
-                                            className={"preview-mode-btn " + (config.widgetMode === "buttons" && previewOpen ? "active" : "")}
+                                            className="cf-hero-config-item"
                                             onClick={() => {
-                                                updateConfig({ widgetMode: "buttons" })
-                                                setPreviewOpen(true)
+                                                setIsProfileOpen(false)
+                                                setTab("builder")
+                                                setBuilderSubTab("channels")
                                             }}
+                                            title="Active channels in builder"
                                         >
-                                            Button View
+                                            <span className="cf-hero-config-label">Channels</span>
+                                            <span className="cf-hero-config-val">{enabledChannels.length} Active</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="cf-hero-config-item"
+                                            onClick={() => {
+                                                setIsProfileOpen(false)
+                                                setTab("builder")
+                                                setBuilderSubTab("agents")
+                                            }}
+                                            title="Team agents in builder"
+                                        >
+                                            <span className="cf-hero-config-label">Team</span>
+                                            <span className="cf-hero-config-val">{config.agents.length} Agents</span>
                                         </button>
                                     </div>
+                                </HeroCard>
+
+                                <Section
+                                    title="Widget Experience Mode"
+                                    description="Choose how visitors interact when clicking your floating button."
+                                >
+                                    <div className="cf-field-grid">
+                                        <div
+                                            className={"cf-theme-card cf-mode-card " + (config.widgetMode === "modal" ? "active" : "")}
+                                            onClick={() => updateConfig({ widgetMode: "modal" })}
+                                        >
+                                            <div className="cf-mode-card-header">
+                                                <span className="cf-mode-card-icon">
+                                                    <IconLayoutModal size={16} />
+                                                </span>
+                                                <strong className="cf-mode-card-title">Live Chat Modal</strong>
+                                            </div>
+                                            <span className="cf-mode-card-desc">
+                                                Popup chat window with support team and preview.
+                                            </span>
+                                        </div>
+                                        <div
+                                            className={"cf-theme-card cf-mode-card " + (config.widgetMode === "buttons" ? "active" : "")}
+                                            onClick={() => updateConfig({ widgetMode: "buttons" })}
+                                        >
+                                            <div className="cf-mode-card-header">
+                                                <span className="cf-mode-card-icon">
+                                                    <IconLayoutButtons size={16} />
+                                                </span>
+                                                <strong className="cf-mode-card-title">Icon Buttons</strong>
+                                            </div>
+                                            <span className="cf-mode-card-desc">
+                                                Classic floating icon list opening direct channel URLs.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Section>
+
+                                <Section
+                                    title="Interactive Live Preview"
+                                    description="Test the interactive widget live. Click the button to toggle the window."
+                                >
+                                    {renderPreview()}
+                                </Section>
+
+                                <HelpRow />
+
+                                <Section
+                                    title="More from Framefic"
+                                    description="Discover powerful plugins built specifically for Framer creators."
+                                >
+                                    <div className="cf-marketplace-list">
+                                        <FrameficCard
+                                            name="Before After Image Slider"
+                                            description="Advanced slider features and fully customizable"
+                                            logoIcon={<IconPluginSlider size={20} />}
+                                            marketplaceUrl="https://www.framer.com/marketplace/plugins/beaf/"
+                                        />
+                                        <FrameficCard
+                                            name="Announcement Bar"
+                                            description="Create bars and countdown timers to boost engagement and conversions."
+                                            logoIcon={<IconPluginAnnouncement size={20} />}
+                                            marketplaceUrl="https://www.framer.com/marketplace/plugins/announcement-bar/"
+                                        />
+                                        <FrameficCard
+                                            name="Connectfic"
+                                            description="Seamlessly connect forms, spreadsheets, and databases with Framer."
+                                            logoIcon={<IconPluginConnect size={20} />}
+                                            marketplaceUrl="https://www.framer.com/marketplace/plugins/connectfic/"
+                                        />
+                                    </div>
+                                </Section>
+                            </>
+                        )}
+
+                        {/* BUILDER TAB */}
+                        {tab === "builder" && (
+                            <>
+                                <div className="cf-builder-subtabs">
+                                    <button
+                                        type="button"
+                                        className={"cf-builder-subtab " + (builderSubTab === "channels" ? "active" : "")}
+                                        onClick={() => setBuilderSubTab("channels")}
+                                    >
+                                        Channels ({enabledChannels.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={"cf-builder-subtab " + (builderSubTab === "agents" ? "active" : "")}
+                                        onClick={() => setBuilderSubTab("agents")}
+                                    >
+                                        Support Team ({config.agents.length})
+                                    </button>
                                 </div>
 
-                                <div className="preview-viewport">
-                                    <div className="preview-mock-page">
-                                        <div className="preview-mock-line short" />
-                                        <div className="preview-mock-line long" />
-                                        <div className="preview-mock-line" />
-                                        <div className="preview-mock-line short" />
-                                    </div>
-
-                                    <div className="preview-launcher-wrap">
-                                        {config.widgetMode === "modal" && previewOpen ? (
-                                            <div className="preview-modal-card">
-                                                <div className="preview-modal-header" style={{ background: resolvedGradient }}>
-                                                    <div className="preview-modal-header-top">
-                                                        <h4 className="preview-modal-title">{config.modalTitle || "Hi there!"}</h4>
-                                                        <button
-                                                            type="button"
-                                                            className="preview-modal-close-btn"
-                                                            onClick={() => setPreviewOpen(false)}
-                                                        >
-                                                            <IconX size={12} />
-                                                        </button>
-                                                    </div>
-                                                    <p className="preview-modal-subtitle">
-                                                        {config.modalSubtitle || "Welcome to our live chat! Feel free to ask any questions."}
-                                                    </p>
-                                                    <div className="preview-modal-badge">
-                                                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
-                                                        {config.modalResponseTime || "Typically replies in minutes"}
-                                                    </div>
-                                                </div>
-
-                                                <div className="preview-modal-body">
-                                                    {previewSelectedAgent ? (
-                                                        <div className="preview-chat-view">
-                                                            <button
-                                                                type="button"
-                                                                className="preview-chat-back"
-                                                                onClick={() => setPreviewSelectedAgent(null)}
-                                                                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                                                            >
-                                                                <IconArrowLeft size={12} />
-                                                                <span>All Team Members</span>
-                                                            </button>
-                                                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                                                <img
-                                                                    src={previewSelectedAgent.avatar}
-                                                                    alt={previewSelectedAgent.name}
-                                                                    style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                                                                />
-                                                                <div>
-                                                                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--cf-text)" }}>
-                                                                        {previewSelectedAgent.name}
-                                                                    </div>
-                                                                    <div style={{ fontSize: 10, color: "var(--cf-text-secondary)" }}>
-                                                                        {previewSelectedAgent.role}
-                                                                    </div>
+                                {builderSubTab === "channels" && (
+                                    <Section
+                                        title="Messaging Channels (12 Platforms Supported)"
+                                        description="Configure your handles, phone numbers, and pre-filled messages. Enable any combination of channels for your visitors."
+                                    >
+                                        {config.channels.map((channel) => {
+                                            const meta = channelMeta[channel.id]
+                                            const chClass = `cf-ch-${channel.id}`
+                                            return (
+                                                <div key={channel.id} className={"cf-channel-card " + (channel.enabled ? "is-active" : "")}>
+                                                    <div className="cf-channel-header">
+                                                        <div className="cf-channel-info">
+                                                            <span
+                                                                className={"cf-channel-icon-badge " + chClass}
+                                                                dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }}
+                                                            />
+                                                            <div className="cf-channel-meta">
+                                                                <div className="cf-channel-meta-title">
+                                                                    {channel.label}
+                                                                    {channel.enabled && channel.value.trim() ? (
+                                                                        <span className="cf-channel-pill live">Active</span>
+                                                                    ) : null}
                                                                 </div>
+                                                                <div className="cf-channel-meta-hint">{meta?.hint || ""}</div>
                                                             </div>
-                                                            <div className="preview-chat-bubble">
-                                                                {previewSelectedAgent.message || config.modalChatBubble || "We typically reply within a few minutes. How can we help you today?"}
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                className="preview-start-btn"
-                                                                style={{
-                                                                    background: resolvedGradient,
-                                                                    display: "inline-flex",
-                                                                    alignItems: "center",
-                                                                    justifyContent: "center",
-                                                                    gap: 6,
-                                                                }}
-                                                                onClick={() => {
-                                                                    const ch = config.channels.find((c) => c.id === previewSelectedAgent.channelId)
-                                                                    const targetVal = previewSelectedAgent.value || ch?.value || "(Not configured)"
-                                                                    setMessage({
-                                                                        type: "info",
-                                                                        text: `Simulated chat with ${previewSelectedAgent.name} via ${previewSelectedAgent.channelId} (${targetVal})!`,
-                                                                    })
-                                                                }}
-                                                            >
-                                                                <span>{config.modalStartChatText || "Start chat"}</span>
-                                                                <IconArrowRight size={13} />
-                                                            </button>
                                                         </div>
-                                                    ) : (
-                                                        <>
-                                                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--cf-text-tertiary)", letterSpacing: "0.05em" }}>
-                                                                Support Team
-                                                            </span>
-                                                            {config.agents.map((agent) => {
-                                                                const ch = config.channels.find((c) => c.id === agent.channelId)
-                                                                return (
-                                                                    <div
-                                                                        key={agent.id}
-                                                                        className="preview-agent-card"
-                                                                        onClick={() => setPreviewSelectedAgent(agent)}
-                                                                        title="Click to preview agent chat screen"
-                                                                    >
-                                                                        <div className="preview-agent-avatar-wrap">
-                                                                            <img src={agent.avatar} alt={agent.name} />
-                                                                            {agent.online !== false && <span className="preview-agent-online-dot" />}
-                                                                        </div>
-                                                                        <div className="preview-agent-details">
-                                                                            <span className="preview-agent-name">{agent.name}</span>
-                                                                            <span className="preview-agent-role">
-                                                                                {agent.role}
-                                                                                {agent.value ? ` • ${agent.value}` : ""}
-                                                                            </span>
-                                                                        </div>
-                                                                        <span
-                                                                            className="preview-agent-channel-badge"
-                                                                            style={{ background: ch?.color || "#25D366" }}
-                                                                            dangerouslySetInnerHTML={{ __html: ICONS[agent.channelId] || "" }}
+                                                        <Switch
+                                                            checked={channel.enabled}
+                                                            onChange={(enabled) => updateChannel(channel.id, { enabled })}
+                                                        />
+                                                    </div>
+
+                                                    {channel.enabled && (
+                                                        <div className="cf-channel-body">
+                                                            <div className="cf-field-grid">
+                                                                <Field label={meta?.label || "Handle / ID"}>
+                                                                    <input
+                                                                        className="cf-input"
+                                                                        maxLength={150}
+                                                                        value={channel.value}
+                                                                        onChange={(e) => updateChannel(channel.id, { value: e.target.value })}
+                                                                        placeholder={meta?.placeholder}
+                                                                    />
+                                                                </Field>
+                                                                <Field label="Button Color">
+                                                                    <div className="cf-flex-center-gap-6">
+                                                                        <input
+                                                                            type="color"
+                                                                            className="cf-color-picker"
+                                                                            value={channel.color}
+                                                                            onChange={(e) => updateChannel(channel.id, { color: e.target.value })}
+                                                                        />
+                                                                        <input
+                                                                            className="cf-input cf-input-w80"
+                                                                            maxLength={30}
+                                                                            value={channel.color}
+                                                                            onChange={(e) => updateChannel(channel.id, { color: e.target.value })}
                                                                         />
                                                                     </div>
-                                                                )
-                                                            })}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : null}
-
-                                        {config.widgetMode === "buttons" && previewOpen ? (
-                                            <div className={`preview-buttons-list layout-${config.layout}`}>
-                                                {enabledChannels.map((channel) => (
-                                                    <div key={channel.id} className="preview-channel-button-item">
-                                                        {config.showLabels && (
-                                                            <span className="preview-channel-label">{channel.label}</span>
-                                                        )}
-                                                        <div
-                                                            className={`preview-channel-btn shape-${config.buttonShape}`}
-                                                            style={{
-                                                                background: channel.color,
-                                                                width: config.buttonShape === "pill" ? "auto" : Math.max(38, Math.round((config.buttonSize || 56) * 0.75)),
-                                                                height: Math.max(38, Math.round((config.buttonSize || 56) * 0.75)),
-                                                            }}
-                                                            title={channel.label}
-                                                            onClick={() => {
-                                                                setMessage({
-                                                                    type: "info",
-                                                                    text: `Opened ${channel.label} directly (${channel.value || "Configured"})!`,
-                                                                })
-                                                            }}
-                                                        >
-                                                            <span dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }} />
+                                                                </Field>
+                                                            </div>
+                                                            {["whatsapp", "telegram"].includes(channel.id) && (
+                                                                <Field
+                                                                    label="Pre-filled Welcome Message"
+                                                                    hint="Automatically fills visitor's chat input."
+                                                                >
+                                                                    <input
+                                                                        className="cf-input"
+                                                                        maxLength={300}
+                                                                        value={channel.message || ""}
+                                                                        onChange={(e) => updateChannel(channel.id, { message: e.target.value })}
+                                                                        placeholder="Hello! I'd like to know more."
+                                                                    />
+                                                                </Field>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : null}
-
-                                        {!previewOpen && config.greetingEnabled && (
-                                            <div className="preview-greeting-pill">
-                                                {config.greetingText || "Need help? Chat with us."}
-                                            </div>
-                                        )}
-
-                                        <button
-                                            type="button"
-                                            className="preview-main-btn"
-                                            style={{
-                                                background: primaryColor,
-                                                width: config.buttonSize || 56,
-                                                height: config.buttonSize || 56,
-                                                borderRadius: config.buttonShape === "circle" ? "50%" : config.buttonShape === "pill" ? "999px" : "14px",
-                                            }}
-                                            onClick={() => setPreviewOpen(!previewOpen)}
-                                        >
-                                            <span dangerouslySetInnerHTML={{ __html: LAUNCHER_ICONS[config.launcherIcon || "chat"] || LAUNCHER_ICONS.chat }} />
-                                            {config.showBadge && (
-                                                <span className="preview-badge-pill">{config.badgeText || "1"}</span>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </Section>
-                    </>
-                ) : null}
-
-                {tab === "modal" ? (
-                    <>
-                        <Section
-                            title="Chat Window Header &amp; Theme"
-                            description="Customize the top header gradient, greeting, and response time."
-                        >
-                            <Field label="Header Theme Gradient">
-                                <div className="cf-theme-grid">
-                                    {(
-                                        [
-                                            ["whatsapp", "WhatsApp", MODAL_THEME_GRADIENTS.whatsapp],
-                                            ["messenger", "Messenger", MODAL_THEME_GRADIENTS.messenger],
-                                            ["telegram", "Telegram", MODAL_THEME_GRADIENTS.telegram],
-                                            ["instagram", "Instagram", MODAL_THEME_GRADIENTS.instagram],
-                                            ["tiktok", "TikTok", MODAL_THEME_GRADIENTS.tiktok],
-                                            ["wechat", "WeChat", MODAL_THEME_GRADIENTS.wechat],
-                                            ["dark", "Modern Dark", MODAL_THEME_GRADIENTS.dark],
-                                            ["custom", "Custom", config.modalCustomGradient || MODAL_THEME_GRADIENTS.whatsapp],
-                                        ] as const
-                                    ).map(([themeId, label, grad]) => (
-                                        <div
-                                            key={themeId}
-                                            className={"cf-theme-card " + (config.modalTheme === themeId ? "active" : "")}
-                                            onClick={() => updateConfig({ modalTheme: themeId as ModalTheme })}
-                                        >
-                                            <div className="cf-theme-swatch" style={{ background: grad }} />
-                                            <span className="cf-theme-name">{label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </Field>
-
-                            {config.modalTheme === "custom" && (
-                                <Field label="Custom CSS Gradient" hint="e.g. linear-gradient(135deg, #6366f1, #a855f7)">
-                                    <input
-                                        className="cf-input"
-                                        maxLength={200}
-                                        value={config.modalCustomGradient || ""}
-                                        onChange={(e) => updateConfig({ modalCustomGradient: e.target.value })}
-                                        placeholder="linear-gradient(135deg, #6366f1, #a855f7)"
-                                    />
-                                </Field>
-                            )}
-
-                            <div className="cf-field-grid">
-                                <Field label="Header Title">
-                                    <input
-                                        className="cf-input"
-                                        maxLength={100}
-                                        value={config.modalTitle}
-                                        onChange={(e) => updateConfig({ modalTitle: e.target.value })}
-                                        placeholder="Hi there!"
-                                    />
-                                </Field>
-                                <Field label="Response Time Badge">
-                                    <input
-                                        className="cf-input"
-                                        maxLength={60}
-                                        value={config.modalResponseTime}
-                                        onChange={(e) => updateConfig({ modalResponseTime: e.target.value })}
-                                        placeholder="Typically replies in minutes"
-                                    />
-                                </Field>
-                            </div>
-
-                            <Field label="Header Subtitle">
-                                <input
-                                    className="cf-input"
-                                    maxLength={250}
-                                    value={config.modalSubtitle}
-                                    onChange={(e) => updateConfig({ modalSubtitle: e.target.value })}
-                                    placeholder="Welcome to our live chat! Feel free to ask any questions."
-                                />
-                            </Field>
-                        </Section>
-
-                        <Section
-                            title="Chat Preview &amp; Start CTA"
-                            description="Configure the simulated incoming message and the action button."
-                        >
-                            <Field label="Welcome Chat Bubble Message">
-                                <textarea
-                                    className="cf-input"
-                                    rows={2}
-                                    maxLength={500}
-                                    value={config.modalChatBubble}
-                                    onChange={(e) => updateConfig({ modalChatBubble: e.target.value })}
-                                    placeholder="We typically reply within a few minutes. How can we help you today?"
-                                />
-                            </Field>
-                            <Field label="CTA Button Text">
-                                <input
-                                    className="cf-input"
-                                    maxLength={50}
-                                    value={config.modalStartChatText}
-                                    onChange={(e) => updateConfig({ modalStartChatText: e.target.value })}
-                                    placeholder="Start chat"
-                                />
-                            </Field>
-                        </Section>
-
-                        <Section
-                            title="Support Team / Agents"
-                            description="Add team members visitors can chat with. Each agent can have their own direct number or custom message."
-                        >
-                            <div className="cf-agents-list">
-                                {config.agents.map((agent) => {
-                                    const channel = config.channels.find((c) => c.id === agent.channelId) || config.channels[0]
-                                    const isExpanded = expandedAgentId === agent.id
-                                    const isUploading = uploadingAgentId === agent.id
-                                    const currentChannelMeta = channelMeta[agent.channelId]
-                                    const hasCustomValue = Boolean(agent.value && agent.value.trim())
-
-                                    return (
-                                        <div key={agent.id} className={"cf-agent-manage-item " + (isExpanded ? "is-expanded" : "")}>
-                                            <div className="cf-agent-manage-header">
-                                                <div
-                                                    className="cf-agent-avatar-wrap"
-                                                    title="Click to upload/change photo"
-                                                    onClick={() => {
-                                                        document.getElementById(`cf-agent-file-${agent.id}`)?.click()
-                                                    }}
-                                                >
-                                                    <img src={agent.avatar} alt={agent.name} className="cf-agent-manage-avatar" />
-                                                    <div className="cf-agent-avatar-hover-icon">
-                                                        {isUploading ? <IconSpinner size={14} /> : <IconCamera size={14} />}
-                                                    </div>
-                                                    <input
-                                                        id={`cf-agent-file-${agent.id}`}
-                                                        type="file"
-                                                        accept="image/*"
-                                                        style={{ display: "none" }}
-                                                        onChange={(e) => handleExistingAgentFileUpload(agent.id, e)}
-                                                    />
-                                                </div>
-
-                                                <div className="cf-agent-manage-fields">
-                                                    <input
-                                                        className="cf-input"
-                                                        maxLength={60}
-                                                        value={agent.name}
-                                                        onChange={(e) => updateAgent(agent.id, { name: e.target.value })}
-                                                        placeholder="Agent Name"
-                                                    />
-                                                    <input
-                                                        className="cf-input"
-                                                        maxLength={80}
-                                                        value={agent.role}
-                                                        onChange={(e) => updateAgent(agent.id, { role: e.target.value })}
-                                                        placeholder="Role / Department"
-                                                    />
-                                                </div>
-
-                                                <div className="cf-agent-meta-badge-wrap">
-                                                    <span
-                                                        className="cf-agent-channel-tag"
-                                                        style={{ background: channel?.color || "#25D366" }}
-                                                    >
-                                                        {channel?.label || "Chat"}
-                                                    </span>
-                                                    {hasCustomValue && (
-                                                        <span className="cf-agent-custom-tag" title={"Direct value: " + agent.value}>
-                                                            Custom #
-                                                        </span>
                                                     )}
                                                 </div>
+                                            )
+                                        })}
+                                    </Section>
+                                )}
 
-                                                <button
-                                                    type="button"
-                                                    className={"cf-agent-btn-configure " + (isExpanded ? "active" : "")}
-                                                    onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
-                                                    title={isExpanded ? "Collapse settings" : "Configure direct number, message & photo"}
-                                                >
-                                                    <IconGear size={13} />
-                                                </button>
+                                {builderSubTab === "agents" && (
+                                    <Section
+                                        title="Support Team / Agents"
+                                        description="Add team members visitors can chat with. Each agent can have their own direct number or custom message."
+                                    >
+                                        <div className="cf-agents-list">
+                                            {config.agents.map((agent) => {
+                                                const channel = config.channels.find((c) => c.id === agent.channelId) || config.channels[0]
+                                                const isExpanded = expandedAgentId === agent.id
+                                                const isUploading = uploadingAgentId === agent.id
+                                                const currentChannelMeta = channelMeta[agent.channelId]
+                                                const hasCustomValue = Boolean(agent.value && agent.value.trim())
+                                                const chClass = `cf-ch-${agent.channelId}`
 
-                                                <button
-                                                    type="button"
-                                                    className="cf-agent-del-btn"
-                                                    onClick={() => deleteAgent(agent.id)}
-                                                    title="Remove agent"
-                                                >
-                                                    <IconX size={12} />
-                                                </button>
-                                            </div>                                             {isExpanded && (
-                                                <div className="cf-agent-expanded-body">
-                                                    <Field
-                                                        label="Assigned Channel"
-                                                        hint="Only channels enabled in the Channels tab appear here."
-                                                    >
-                                                        <select
-                                                            className="cf-input"
-                                                            value={agent.channelId}
-                                                            onChange={(e) => updateAgent(agent.id, { channelId: e.target.value as ChannelId })}
-                                                        >
-                                                            {(() => {
-                                                                const eligible = config.channels.filter((c) => c.enabled || c.id === agent.channelId)
-                                                                const list = eligible.length > 0 ? eligible : config.channels
-                                                                return list.map((c) => (
-                                                                    <option key={c.id} value={c.id}>
-                                                                        {c.label}
-                                                                        {!c.enabled
-                                                                            ? " (Disabled in Channels)"
-                                                                            : c.value
-                                                                            ? ` (${c.value})`
-                                                                            : " (Active, no default)"}
-                                                                    </option>
-                                                                ))
-                                                            })()}
-                                                        </select>
-                                                    </Field>
-
-                                                    <Field
-                                                        label={`Direct ${channel?.label || "Channel"} ${agent.channelId === "email" ? "Email" : agent.channelId === "phone" || agent.channelId === "whatsapp" || agent.channelId === "viber" ? "Number" : "Handle"} (Optional)`}
-                                                        hint={
-                                                            channel?.value
-                                                                ? `Default: ${channel.value}. Leave blank to use default.`
-                                                                : "Leave blank to use channel default."
-                                                        }
-                                                    >
-                                                        <input
-                                                            className="cf-input"
-                                                            maxLength={150}
-                                                            value={agent.value || ""}
-                                                            onChange={(e) => updateAgent(agent.id, { value: e.target.value })}
-                                                            placeholder={currentChannelMeta?.placeholder || "Direct contact value"}
-                                                        />
-                                                    </Field>
-
-                                                    <Field
-                                                        label="Direct Pre-filled Message (Optional)"
-                                                        hint={
-                                                            channel?.message
-                                                                ? `Default: "${channel.message}". Leave blank to use default.`
-                                                                : "Leave blank to use welcome chat bubble."
-                                                        }
-                                                    >
-                                                        <textarea
-                                                            className="cf-input"
-                                                            rows={2}
-                                                            maxLength={300}
-                                                            value={agent.message || ""}
-                                                            onChange={(e) => updateAgent(agent.id, { message: e.target.value })}
-                                                            placeholder="e.g. Hi there! Emma here from billing. How can I help you today?"
-                                                        />
-                                                    </Field>
-
-                                                    <Field label="Avatar Photo">
-                                                        <div className="cf-avatar-edit-row">
-                                                            <button
-                                                                type="button"
-                                                                className="cf-btn secondary cf-avatar-upload-trigger"
+                                                return (
+                                                    <div key={agent.id} className={"cf-agent-manage-item " + (isExpanded ? "is-expanded" : "")}>
+                                                        <div className="cf-agent-manage-header">
+                                                            <div
+                                                                className="cf-agent-avatar-wrap"
+                                                                title="Click to upload/change photo"
                                                                 onClick={() => {
                                                                     document.getElementById(`cf-agent-file-${agent.id}`)?.click()
                                                                 }}
-                                                                disabled={isUploading}
-                                                                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                                                             >
-                                                                {isUploading ? (
-                                                                    <>
-                                                                        <IconSpinner size={12} />
-                                                                        <span>Uploading photo...</span>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <IconUpload size={12} />
-                                                                        <span>Upload New Photo</span>
-                                                                    </>
-                                                                )}
-                                                            </button>
-                                                            <div className="cf-avatar-presets-mini">
-                                                                {AVATAR_PRESETS.map((preset, idx) => (
-                                                                    <button
-                                                                        key={idx}
-                                                                        type="button"
-                                                                        className={"cf-avatar-preset-btn " + (agent.avatar === preset ? "active" : "")}
-                                                                        onClick={() => updateAgent(agent.id, { avatar: preset })}
-                                                                        title={"Preset " + (idx + 1)}
-                                                                    >
-                                                                        <img src={preset} alt={"Preset " + (idx + 1)} />
-                                                                    </button>
-                                                                ))}
+                                                                <img src={agent.avatar} alt={agent.name} className="cf-agent-manage-avatar" />
+                                                                <div className="cf-agent-avatar-hover-icon">
+                                                                    {isUploading ? <IconSpinner size={14} /> : <IconCamera size={14} />}
+                                                                </div>
+                                                                <input
+                                                                    id={`cf-agent-file-${agent.id}`}
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    className="cf-hidden-file-input"
+                                                                    onChange={(e) => handleExistingAgentFileUpload(agent.id, e)}
+                                                                />
                                                             </div>
+
+                                                            <div className="cf-agent-manage-fields">
+                                                                <input
+                                                                    className="cf-input"
+                                                                    maxLength={60}
+                                                                    value={agent.name}
+                                                                    onChange={(e) => updateAgent(agent.id, { name: e.target.value })}
+                                                                    placeholder="Agent Name"
+                                                                />
+                                                                <input
+                                                                    className="cf-input"
+                                                                    maxLength={80}
+                                                                    value={agent.role}
+                                                                    onChange={(e) => updateAgent(agent.id, { role: e.target.value })}
+                                                                    placeholder="Role / Department"
+                                                                />
+                                                            </div>
+
+                                                            <div className="cf-agent-meta-badge-wrap">
+                                                                <span
+                                                                    className={"cf-agent-channel-tag " + chClass}
+                                                                >
+                                                                    {channel?.label || "Chat"}
+                                                                </span>
+                                                                {hasCustomValue && (
+                                                                    <span className="cf-agent-custom-tag" title={"Direct value: " + agent.value}>
+                                                                        Custom #
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                className={"cf-agent-btn-configure " + (isExpanded ? "active" : "")}
+                                                                onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
+                                                                title={isExpanded ? "Collapse settings" : "Configure direct number, message & photo"}
+                                                            >
+                                                                <IconGear size={13} />
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                className="cf-agent-del-btn"
+                                                                onClick={() => deleteAgent(agent.id)}
+                                                                title="Remove agent"
+                                                            >
+                                                                <IconX size={12} />
+                                                            </button>
                                                         </div>
+
+                                                        {isExpanded && (
+                                                            <div className="cf-agent-expanded-body">
+                                                                <Field
+                                                                    label="Assigned Channel"
+                                                                    hint="Only channels enabled in the Channels tab appear here."
+                                                                >
+                                                                    <select
+                                                                        className="cf-input"
+                                                                        value={agent.channelId}
+                                                                        onChange={(e) => updateAgent(agent.id, { channelId: e.target.value as ChannelId })}
+                                                                    >
+                                                                        {(() => {
+                                                                            const eligible = config.channels.filter((c) => c.enabled || c.id === agent.channelId)
+                                                                            const list = eligible.length > 0 ? eligible : config.channels
+                                                                            return list.map((c) => (
+                                                                                <option key={c.id} value={c.id}>
+                                                                                    {c.label}
+                                                                                    {!c.enabled
+                                                                                        ? " (Disabled in Channels)"
+                                                                                        : c.value
+                                                                                        ? ` (${c.value})`
+                                                                                        : " (Active, no default)"}
+                                                                                </option>
+                                                                            ))
+                                                                        })()}
+                                                                    </select>
+                                                                </Field>
+
+                                                                <Field
+                                                                    label={`Direct ${channel?.label || "Channel"} ${agent.channelId === "email" ? "Email" : agent.channelId === "phone" || agent.channelId === "whatsapp" || agent.channelId === "viber" ? "Number" : "Handle"} (Optional)`}
+                                                                    hint={
+                                                                        channel?.value
+                                                                            ? `Default: ${channel.value}. Leave blank to use default.`
+                                                                            : "Leave blank to use channel default."
+                                                                    }
+                                                                >
+                                                                    <input
+                                                                        className="cf-input"
+                                                                        maxLength={150}
+                                                                        value={agent.value || ""}
+                                                                        onChange={(e) => updateAgent(agent.id, { value: e.target.value })}
+                                                                        placeholder={currentChannelMeta?.placeholder || "Direct contact value"}
+                                                                    />
+                                                                </Field>
+
+                                                                <Field
+                                                                    label="Direct Pre-filled Message (Optional)"
+                                                                    hint={
+                                                                        channel?.message
+                                                                            ? `Default: "${channel.message}". Leave blank to use default.`
+                                                                            : "Leave blank to use welcome chat bubble."
+                                                                    }
+                                                                >
+                                                                    <textarea
+                                                                        className="cf-input"
+                                                                        rows={2}
+                                                                        maxLength={300}
+                                                                        value={agent.message || ""}
+                                                                        onChange={(e) => updateAgent(agent.id, { message: e.target.value })}
+                                                                        placeholder="e.g. Hi there! Emma here from billing. How can I help you today?"
+                                                                    />
+                                                                </Field>
+
+                                                                <Field label="Avatar Photo">
+                                                                    <div className="cf-avatar-edit-row">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="cf-btn secondary cf-avatar-upload-trigger cf-btn-inline-flex"
+                                                                            onClick={() => {
+                                                                                document.getElementById(`cf-agent-file-${agent.id}`)?.click()
+                                                                            }}
+                                                                            disabled={isUploading}
+                                                                        >
+                                                                            {isUploading ? (
+                                                                                <>
+                                                                                    <IconSpinner size={12} />
+                                                                                    <span>Uploading photo...</span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <IconUpload size={12} />
+                                                                                    <span>Upload New Photo</span>
+                                                                                </>
+                                                                            )}
+                                                                        </button>
+                                                                        <div className="cf-avatar-presets-mini">
+                                                                            {AVATAR_PRESETS.map((preset, idx) => (
+                                                                                <button
+                                                                                    key={idx}
+                                                                                    type="button"
+                                                                                    className={"cf-avatar-preset-btn " + (agent.avatar === preset ? "active" : "")}
+                                                                                    onClick={() => updateAgent(agent.id, { avatar: preset })}
+                                                                                    title={"Preset " + (idx + 1)}
+                                                                                >
+                                                                                    <img src={preset} alt={"Preset " + (idx + 1)} />
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    <input
+                                                                        className="cf-input cf-mt-6"
+                                                                        maxLength={500}
+                                                                        value={agent.avatar}
+                                                                        onChange={(e) => updateAgent(agent.id, { avatar: e.target.value })}
+                                                                        placeholder="Or paste image URL..."
+                                                                    />
+                                                                </Field>
+
+                                                                <div className="cf-agent-detail-row">
+                                                                    <div className="cf-agent-detail-left">
+                                                                        <Switch
+                                                                            checked={agent.online !== false}
+                                                                            onChange={(online) => updateAgent(agent.id, { online })}
+                                                                        />
+                                                                        <span className="cf-agent-detail-lbl">
+                                                                            {agent.online !== false ? "Active / Online (shows green dot)" : "Away / Offline"}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="cf-btn secondary cf-badge-sm"
+                                                                        onClick={() => setExpandedAgentId(null)}
+                                                                    >
+                                                                        Done
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        {showAddAgent ? (
+                                            <div className="cf-add-agent-box">
+                                                <div className="cf-add-member-header">
+                                                    <span className="cf-add-member-title">Add New Team Member</span>
+                                                    <button
+                                                        type="button"
+                                                        className="cf-agent-del-btn"
+                                                        onClick={() => setShowAddAgent(false)}
+                                                        title="Close"
+                                                    >
+                                                        <IconX size={12} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="cf-field-grid">
+                                                    <Field label="Agent Name *">
                                                         <input
                                                             className="cf-input"
-                                                            style={{ marginTop: 6 }}
-                                                            maxLength={500}
-                                                            value={agent.avatar}
-                                                            onChange={(e) => updateAgent(agent.id, { avatar: e.target.value })}
-                                                            placeholder="Or paste image URL..."
+                                                            maxLength={60}
+                                                            value={newAgentName}
+                                                            onChange={(e) => setNewAgentName(e.target.value)}
+                                                            placeholder="e.g. Emma Watson"
+                                                            autoFocus
                                                         />
                                                     </Field>
-
-                                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 4 }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                                            <Switch
-                                                                checked={agent.online !== false}
-                                                                onChange={(online) => updateAgent(agent.id, { online })}
-                                                            />
-                                                            <span style={{ fontSize: 11, color: "var(--cf-text)" }}>
-                                                                {agent.online !== false ? "Active / Online (shows green dot)" : "Away / Offline"}
-                                                            </span>
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            className="cf-btn secondary"
-                                                            onClick={() => setExpandedAgentId(null)}
-                                                            style={{ fontSize: 11, padding: "3px 10px" }}
-                                                        >
-                                                            Done
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-
-                            {showAddAgent ? (
-                                <div className="cf-add-agent-box">
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--cf-text)" }}>Add New Team Member</span>
-                                        <button
-                                            type="button"
-                                            className="cf-agent-del-btn"
-                                            onClick={() => setShowAddAgent(false)}
-                                            title="Close"
-                                        >
-                                            <IconX size={12} />
-                                        </button>
-                                    </div>
-
-                                    <div className="cf-field-grid">
-                                        <Field label="Agent Name *">
-                                            <input
-                                                className="cf-input"
-                                                maxLength={60}
-                                                value={newAgentName}
-                                                onChange={(e) => setNewAgentName(e.target.value)}
-                                                placeholder="e.g. Emma Watson"
-                                                autoFocus
-                                            />
-                                        </Field>
-                                        <Field label="Role / Department">
-                                            <input
-                                                className="cf-input"
-                                                maxLength={80}
-                                                value={newAgentRole}
-                                                onChange={(e) => setNewAgentRole(e.target.value)}
-                                                placeholder="e.g. Sales Specialist"
-                                            />
-                                        </Field>
-                                    </div>
-
-                                    <Field
-                                        label="Assigned Channel"
-                                        hint="Only channels enabled in the Channels tab appear here."
-                                    >
-                                        <select
-                                            className="cf-input"
-                                            value={newAgentChannel}
-                                            onChange={(e) => setNewAgentChannel(e.target.value as ChannelId)}
-                                        >
-                                            {(() => {
-                                                const eligible = config.channels.filter((c) => c.enabled)
-                                                const list = eligible.length > 0 ? eligible : config.channels
-                                                return list.map((c) => (
-                                                    <option key={c.id} value={c.id}>
-                                                        {c.label} {c.value ? `(${c.value})` : "(Active, no default)"}
-                                                    </option>
-                                                ))
-                                            })()}
-                                        </select>
-                                    </Field>
-
-                                    <Field
-                                        label={`Direct ${config.channels.find((c) => c.id === newAgentChannel)?.label || "Channel"} ${newAgentChannel === "email" ? "Email" : newAgentChannel === "phone" || newAgentChannel === "whatsapp" || newAgentChannel === "viber" ? "Number" : "Handle"} (Optional)`}
-                                        hint={(() => {
-                                            const c = config.channels.find((c) => c.id === newAgentChannel)
-                                            return c?.value
-                                                ? `Default: ${c.value}. Leave blank to inherit default.`
-                                                : "Leave blank to inherit channel default."
-                                        })()}
-                                    >
-                                        <input
-                                            className="cf-input"
-                                            maxLength={150}
-                                            value={newAgentValue}
-                                            onChange={(e) => setNewAgentValue(e.target.value)}
-                                            placeholder={channelMeta[newAgentChannel]?.placeholder || "Custom number or handle"}
-                                        />
-                                    </Field>
-
-                                    <Field
-                                        label="Direct Welcome Message (Optional)"
-                                        hint={(() => {
-                                            const c = config.channels.find((c) => c.id === newAgentChannel)
-                                            return c?.message
-                                                ? `Default: "${c.message}". Leave blank to inherit.`
-                                                : "Leave blank to use general chat bubble."
-                                        })()}
-                                    >
-                                        <textarea
-                                            className="cf-input"
-                                            rows={2}
-                                            maxLength={300}
-                                            value={newAgentMessage}
-                                            onChange={(e) => setNewAgentMessage(e.target.value)}
-                                            placeholder="e.g. Hi there! Emma here from billing. How can I help you today?"
-                                        />
-                                    </Field>
-
-                                    <Field label="Avatar Photo">
-                                        <div className="cf-avatar-picker-tabs">
-                                            <button
-                                                type="button"
-                                                className={"cf-avatar-picker-tab " + (newAvatarMode === "upload" ? "active" : "")}
-                                                onClick={() => setNewAvatarMode("upload")}
-                                            >
-                                                <IconUpload size={12} />
-                                                <span>Upload Image</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={"cf-avatar-picker-tab " + (newAvatarMode === "presets" ? "active" : "")}
-                                                onClick={() => setNewAvatarMode("presets")}
-                                            >
-                                                <IconUser size={12} />
-                                                <span>Presets</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={"cf-avatar-picker-tab " + (newAvatarMode === "url" ? "active" : "")}
-                                                onClick={() => setNewAvatarMode("url")}
-                                            >
-                                                <IconLink size={12} />
-                                                <span>Image URL</span>
-                                            </button>
-                                        </div>
-
-                                        <div className="cf-avatar-picker-content">
-                                            <div className="cf-avatar-picker-preview-wrap">
-                                                <img src={newAgentAvatar} alt="New agent avatar" className="cf-avatar-picker-preview" />
-                                            </div>
-
-                                            <div className="cf-avatar-picker-controls">
-                                                {newAvatarMode === "upload" && (
-                                                    <div className="cf-avatar-upload-zone">
-                                                        <label className="cf-btn secondary cf-avatar-upload-button">
-                                                            {isUploadingNewAvatar ? (
-                                                                <>
-                                                                    <IconSpinner size={13} />
-                                                                    <span>Uploading photo...</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <IconUpload size={13} />
-                                                                    <span>Choose Image File</span>
-                                                                </>
-                                                            )}
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                style={{ display: "none" }}
-                                                                onChange={handleNewAgentFileUpload}
-                                                                disabled={isUploadingNewAvatar}
-                                                            />
-                                                        </label>
-                                                        <span className="cf-avatar-upload-hint">
-                                                            JPG, PNG, WebP or SVG. Uploads to Framer CDN.
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                {newAvatarMode === "presets" && (
-                                                    <div className="cf-avatar-presets-grid">
-                                                        {AVATAR_PRESETS.map((preset, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                type="button"
-                                                                className={"cf-avatar-preset-btn " + (newAgentAvatar === preset ? "active" : "")}
-                                                                onClick={() => setNewAgentAvatar(preset)}
-                                                                title={"Preset " + (idx + 1)}
-                                                            >
-                                                                <img src={preset} alt={"Preset " + (idx + 1)} />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {newAvatarMode === "url" && (
-                                                    <input
-                                                        className="cf-input"
-                                                        maxLength={500}
-                                                        value={newAgentAvatar}
-                                                        onChange={(e) => setNewAgentAvatar(e.target.value)}
-                                                        placeholder="Paste image URL (https://...)"
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </Field>
-
-                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                                        <button
-                                            type="button"
-                                            className="cf-btn secondary"
-                                            onClick={() => setShowAddAgent(false)}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="cf-btn primary"
-                                            onClick={addAgent}
-                                            disabled={!newAgentName.trim() || isUploadingNewAvatar}
-                                        >
-                                            {isUploadingNewAvatar ? "Uploading..." : "Add to Team"}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className="cf-btn secondary full-col"
-                                    onClick={() => {
-                                        const firstActive = config.channels.find((c) => c.enabled)?.id || "whatsapp"
-                                        setNewAgentChannel(firstActive)
-                                        setShowAddAgent(true)
-                                    }}
-                                    style={{ marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                                >
-                                    <IconPlus size={13} />
-                                    <span>Add Team Member</span>
-                                </button>
-                            )}
-                        </Section>
-                    </>
-                ) : null}
-
-                {tab === "channels" ? (
-                    <Section
-                        title="Messaging Channels (12 Platforms Supported)"
-                        description="Configure your handles, phone numbers, and pre-filled messages. Enable any combination of channels for your visitors."
-                    >
-                        {config.channels.map((channel) => {
-                            const meta = channelMeta[channel.id]
-                            return (
-                                <div key={channel.id} className={"cf-channel-card " + (channel.enabled ? "is-active" : "")}>
-                                    <div className="cf-channel-header">
-                                        <div className="cf-channel-info">
-                                            <span
-                                                className="cf-channel-icon-badge"
-                                                style={{ background: channel.color }}
-                                                dangerouslySetInnerHTML={{ __html: ICONS[channel.id] || "" }}
-                                            />
-                                            <div className="cf-channel-meta">
-                                                <div className="cf-channel-meta-title">
-                                                    {channel.label}
-                                                    {channel.enabled && channel.value.trim() ? (
-                                                        <span className="cf-channel-pill live">Active</span>
-                                                    ) : null}
-                                                </div>
-                                                <div className="cf-channel-meta-hint">{meta?.hint || ""}</div>
-                                            </div>
-                                        </div>
-                                        <Switch
-                                            checked={channel.enabled}
-                                            onChange={(enabled) => updateChannel(channel.id, { enabled })}
-                                        />
-                                    </div>
-
-                                    {channel.enabled && (
-                                        <div className="cf-channel-body">
-                                            <div className="cf-field-grid">
-                                                <Field label={meta?.label || "Handle / ID"}>
-                                                    <input
-                                                        className="cf-input"
-                                                        maxLength={150}
-                                                        value={channel.value}
-                                                        onChange={(e) => updateChannel(channel.id, { value: e.target.value })}
-                                                        placeholder={meta?.placeholder}
-                                                    />
-                                                </Field>
-                                                <Field label="Button Color">
-                                                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                                        <input
-                                                            type="color"
-                                                            className="cf-color-picker"
-                                                            value={channel.color}
-                                                            onChange={(e) => updateChannel(channel.id, { color: e.target.value })}
-                                                        />
+                                                    <Field label="Role / Department">
                                                         <input
                                                             className="cf-input"
-                                                            style={{ width: 80 }}
-                                                            maxLength={30}
-                                                            value={channel.color}
-                                                            onChange={(e) => updateChannel(channel.id, { color: e.target.value })}
+                                                            maxLength={80}
+                                                            value={newAgentRole}
+                                                            onChange={(e) => setNewAgentRole(e.target.value)}
+                                                            placeholder="e.g. Sales Specialist"
                                                         />
-                                                    </div>
-                                                </Field>
-                                            </div>
-                                            {["whatsapp", "telegram"].includes(channel.id) && (
+                                                    </Field>
+                                                </div>
+
                                                 <Field
-                                                    label="Pre-filled Welcome Message"
-                                                    hint="Automatically fills visitor's chat input."
+                                                    label="Assigned Channel"
+                                                    hint="Only channels enabled in the Channels tab appear here."
+                                                >
+                                                    <select
+                                                        className="cf-input"
+                                                        value={newAgentChannel}
+                                                        onChange={(e) => setNewAgentChannel(e.target.value as ChannelId)}
+                                                    >
+                                                        {(() => {
+                                                            const eligible = config.channels.filter((c) => c.enabled)
+                                                            const list = eligible.length > 0 ? eligible : config.channels
+                                                            return list.map((c) => (
+                                                                <option key={c.id} value={c.id}>
+                                                                    {c.label} {c.value ? `(${c.value})` : "(Active, no default)"}
+                                                                </option>
+                                                            ))
+                                                        })()}
+                                                    </select>
+                                                </Field>
+
+                                                <Field
+                                                    label={`Direct ${config.channels.find((c) => c.id === newAgentChannel)?.label || "Channel"} ${newAgentChannel === "email" ? "Email" : newAgentChannel === "phone" || newAgentChannel === "whatsapp" || newAgentChannel === "viber" ? "Number" : "Handle"} (Optional)`}
+                                                    hint={(() => {
+                                                        const c = config.channels.find((c) => c.id === newAgentChannel)
+                                                        return c?.value
+                                                            ? `Default: ${c.value}. Leave blank to inherit default.`
+                                                            : "Leave blank to inherit channel default."
+                                                    })()}
                                                 >
                                                     <input
                                                         className="cf-input"
+                                                        maxLength={150}
+                                                        value={newAgentValue}
+                                                        onChange={(e) => setNewAgentValue(e.target.value)}
+                                                        placeholder={channelMeta[newAgentChannel]?.placeholder || "Custom number or handle"}
+                                                    />
+                                                </Field>
+
+                                                <Field
+                                                    label="Direct Welcome Message (Optional)"
+                                                    hint={(() => {
+                                                        const c = config.channels.find((c) => c.id === newAgentChannel)
+                                                        return c?.message
+                                                            ? `Default: "${c.message}". Leave blank to inherit.`
+                                                            : "Leave blank to use general chat bubble."
+                                                    })()}
+                                                >
+                                                    <textarea
+                                                        className="cf-input"
+                                                        rows={2}
                                                         maxLength={300}
-                                                        value={channel.message || ""}
-                                                        onChange={(e) => updateChannel(channel.id, { message: e.target.value })}
-                                                        placeholder="Hello! I'd like to know more."
+                                                        value={newAgentMessage}
+                                                        onChange={(e) => setNewAgentMessage(e.target.value)}
+                                                        placeholder="e.g. Hi there! Emma here from billing. How can I help you today?"
+                                                    />
+                                                </Field>
+
+                                                <Field label="Avatar Photo">
+                                                    <div className="cf-avatar-picker-tabs">
+                                                        <button
+                                                            type="button"
+                                                            className={"cf-avatar-picker-tab " + (newAvatarMode === "upload" ? "active" : "")}
+                                                            onClick={() => setNewAvatarMode("upload")}
+                                                        >
+                                                            <IconUpload size={12} />
+                                                            <span>Upload Image</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={"cf-avatar-picker-tab " + (newAvatarMode === "presets" ? "active" : "")}
+                                                            onClick={() => setNewAvatarMode("presets")}
+                                                        >
+                                                            <IconUser size={12} />
+                                                            <span>Presets</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={"cf-avatar-picker-tab " + (newAvatarMode === "url" ? "active" : "")}
+                                                            onClick={() => setNewAvatarMode("url")}
+                                                        >
+                                                            <IconLink size={12} />
+                                                            <span>Image URL</span>
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="cf-avatar-picker-content">
+                                                        <div className="cf-avatar-picker-preview-wrap">
+                                                            <img src={newAgentAvatar} alt="New agent avatar" className="cf-avatar-picker-preview" />
+                                                        </div>
+
+                                                        <div className="cf-avatar-picker-controls">
+                                                            {newAvatarMode === "upload" && (
+                                                                <div className="cf-avatar-upload-zone">
+                                                                    <label className="cf-btn secondary cf-avatar-upload-button">
+                                                                        {isUploadingNewAvatar ? (
+                                                                            <>
+                                                                                <IconSpinner size={13} />
+                                                                                <span>Uploading photo...</span>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <IconUpload size={13} />
+                                                                                <span>Choose Image File</span>
+                                                                            </>
+                                                                        )}
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            className="cf-hidden-file-input"
+                                                                            onChange={handleNewAgentFileUpload}
+                                                                            disabled={isUploadingNewAvatar}
+                                                                        />
+                                                                    </label>
+                                                                    <span className="cf-avatar-upload-hint">
+                                                                        JPG, PNG, WebP or SVG. Uploads to Framer CDN.
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {newAvatarMode === "presets" && (
+                                                                <div className="cf-avatar-presets-grid">
+                                                                    {AVATAR_PRESETS.map((preset, idx) => (
+                                                                        <button
+                                                                            key={idx}
+                                                                            type="button"
+                                                                            className={"cf-avatar-preset-btn " + (newAgentAvatar === preset ? "active" : "")}
+                                                                            onClick={() => setNewAgentAvatar(preset)}
+                                                                            title={"Preset " + (idx + 1)}
+                                                                        >
+                                                                            <img src={preset} alt={"Preset " + (idx + 1)} />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {newAvatarMode === "url" && (
+                                                                <input
+                                                                    className="cf-input"
+                                                                    maxLength={500}
+                                                                    value={newAgentAvatar}
+                                                                    onChange={(e) => setNewAgentAvatar(e.target.value)}
+                                                                    placeholder="Paste image URL (https://...)"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </Field>
+
+                                                <div className="cf-flex-end-gap-8">
+                                                    <button
+                                                        type="button"
+                                                        className="cf-btn secondary"
+                                                        onClick={() => setShowAddAgent(false)}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="cf-btn primary"
+                                                        onClick={addAgent}
+                                                        disabled={!newAgentName.trim() || isUploadingNewAvatar}
+                                                    >
+                                                        {isUploadingNewAvatar ? "Uploading..." : "Add to Team"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="cf-btn secondary full-col cf-btn-add-agent"
+                                                onClick={() => {
+                                                    const firstActive = config.channels.find((c) => c.enabled)?.id || "whatsapp"
+                                                    setNewAgentChannel(firstActive)
+                                                    setShowAddAgent(true)
+                                                }}
+                                            >
+                                                <IconPlus size={13} />
+                                                <span>Add Team Member</span>
+                                            </button>
+                                        )}
+                                    </Section>
+                                )}
+
+                            </>
+                        )}
+
+                        {/* DESIGN TAB */}
+                        {tab === "design" && (
+                            <>
+                                        <Section
+                                            title="Chat Window Header &amp; Theme"
+                                            description="Customize the top header gradient, greeting, and response time."
+                                        >
+                                            <Field label="Header Theme Gradient">
+                                                <div className="cf-theme-grid">
+                                                    {(
+                                                        [
+                                                            ["whatsapp", "WhatsApp"],
+                                                            ["messenger", "Messenger"],
+                                                            ["telegram", "Telegram"],
+                                                            ["instagram", "Instagram"],
+                                                            ["tiktok", "TikTok"],
+                                                            ["wechat", "WeChat"],
+                                                            ["dark", "Modern Dark"],
+                                                            ["custom", "Custom"],
+                                                        ] as const
+                                                    ).map(([themeId, label]) => (
+                                                        <div
+                                                            key={themeId}
+                                                            className={"cf-theme-card " + (config.modalTheme === themeId ? "active" : "")}
+                                                            onClick={() => updateConfig({ modalTheme: themeId as ModalTheme })}
+                                                        >
+                                                            <div className={"cf-theme-swatch cf-theme-grad-" + themeId} />
+                                                            <span className="cf-theme-name">{label}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </Field>
+
+                                            {config.modalTheme === "custom" && (
+                                                <Field label="Custom CSS Gradient" hint="e.g. linear-gradient(135deg, #6366f1, #a855f7)">
+                                                    <input
+                                                        className="cf-input"
+                                                        maxLength={200}
+                                                        value={config.modalCustomGradient || ""}
+                                                        onChange={(e) => updateConfig({ modalCustomGradient: e.target.value })}
+                                                        placeholder="linear-gradient(135deg, #6366f1, #a855f7)"
                                                     />
                                                 </Field>
                                             )}
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </Section>
-                ) : null}
 
-                {tab === "design" ? (
-                    <Section
-                        title="Floating Launcher Design"
-                        description="Customize the floating button position, shape, size, layout, animation, and responsive offsets."
-                    >
-                        <div className="cf-field-grid">
-                            <Field label="Position">
-                                <select
-                                    className="cf-input"
-                                    value={config.position}
-                                    onChange={(e) => updateConfig({ position: e.target.value as any })}
+                                            <div className="cf-field-grid">
+                                                <Field label="Header Title">
+                                                    <input
+                                                        className="cf-input"
+                                                        maxLength={100}
+                                                        value={config.modalTitle}
+                                                        onChange={(e) => updateConfig({ modalTitle: e.target.value })}
+                                                        placeholder="Hi there!"
+                                                    />
+                                                </Field>
+                                                <Field label="Response Time Badge">
+                                                    <input
+                                                        className="cf-input"
+                                                        maxLength={60}
+                                                        value={config.modalResponseTime}
+                                                        onChange={(e) => updateConfig({ modalResponseTime: e.target.value })}
+                                                        placeholder="Typically replies in minutes"
+                                                    />
+                                                </Field>
+                                            </div>
+
+                                            <Field label="Header Subtitle">
+                                                <input
+                                                    className="cf-input"
+                                                    maxLength={250}
+                                                    value={config.modalSubtitle}
+                                                    onChange={(e) => updateConfig({ modalSubtitle: e.target.value })}
+                                                    placeholder="Welcome to our live chat! Feel free to ask any questions."
+                                                />
+                                            </Field>
+                                        </Section>
+
+                                        <Section
+                                            title="Chat Preview &amp; Start CTA"
+                                            description="Configure the simulated incoming message and the action button."
+                                        >
+                                            <Field label="Welcome Chat Bubble Message">
+                                                <textarea
+                                                    className="cf-input"
+                                                    rows={2}
+                                                    maxLength={500}
+                                                    value={config.modalChatBubble}
+                                                    onChange={(e) => updateConfig({ modalChatBubble: e.target.value })}
+                                                    placeholder="We typically reply within a few minutes. How can we help you today?"
+                                                />
+                                            </Field>
+                                            <Field label="CTA Button Text">
+                                                <input
+                                                    className="cf-input"
+                                                    maxLength={50}
+                                                    value={config.modalStartChatText}
+                                                    onChange={(e) => updateConfig({ modalStartChatText: e.target.value })}
+                                                    placeholder="Start chat"
+                                                />
+                                            </Field>
+                                        </Section>
+
+                                        <Section
+                                            title="Floating Launcher Design"
+                                            description="Customize the floating button shape, size, layout, animation, and responsive offsets."
+                                        >
+                                            <div className="cf-field-grid">
+                                                <Field label="Toggle Button Icon" hint="Icon displayed on the main floating toggle button">
+                                                    <select
+                                                        className="cf-input"
+                                                        value={config.launcherIcon || "chat"}
+                                                        onChange={(e) => updateConfig({ launcherIcon: e.target.value as any })}
+                                                    >
+                                                        <option value="chat">Live Chat (Speech Bubble)</option>
+                                                        <option value="whatsapp">WhatsApp</option>
+                                                        <option value="messenger">Messenger</option>
+                                                        <option value="telegram">Telegram</option>
+                                                        <option value="instagram">Instagram</option>
+                                                        <option value="phone">Phone Call</option>
+                                                        <option value="email">Email</option>
+                                                        <option value="support">Customer Support (Headset)</option>
+                                                    </select>
+                                                </Field>
+                                                <Field label="Button Shape">
+                                                    <select
+                                                        className="cf-input"
+                                                        value={config.buttonShape}
+                                                        onChange={(e) => updateConfig({ buttonShape: e.target.value as any })}
+                                                    >
+                                                        <option value="circle">Circle</option>
+                                                        <option value="rounded">Rounded Square</option>
+                                                        <option value="pill">Pill</option>
+                                                    </select>
+                                                </Field>
+                                            </div>
+
+                                            <div className="cf-field-grid">
+                                                <Field label="Button Menu Layout" hint="Arrange channel buttons in vertical stack, 2-column grid, or horizontal row">
+                                                    <select
+                                                        className="cf-input"
+                                                        value={config.layout}
+                                                        onChange={(e) => updateConfig({ layout: e.target.value as any })}
+                                                    >
+                                                        <option value="stack">Stack (Vertical)</option>
+                                                        <option value="grid">Grid (2 Columns)</option>
+                                                        <option value="horizontal">Horizontal Row</option>
+                                                    </select>
+                                                </Field>
+                                                <Field label="Entrance Animation" hint="Motion preset when launcher/window opens">
+                                                    <select
+                                                        className="cf-input"
+                                                        value={config.animation}
+                                                        onChange={(e) => updateConfig({ animation: e.target.value as any })}
+                                                    >
+                                                        <option value="pop">Pop In</option>
+                                                        <option value="bounce">Playful Bounce</option>
+                                                        <option value="slide">Slide Up</option>
+                                                        <option value="pulse">Pulse Glow</option>
+                                                        <option value="none">None (Instant)</option>
+                                                    </select>
+                                                </Field>
+                                            </div>
+
+                                            <div className="cf-field-grid">
+                                                <Field label="Button Size">
+                                                    <select
+                                                        className="cf-input"
+                                                        value={config.buttonSize}
+                                                        onChange={(e) => updateConfig({ buttonSize: Number(e.target.value) })}
+                                                    >
+                                                        <option value={46}>Small (46px)</option>
+                                                        <option value={56}>Medium (56px)</option>
+                                                        <option value={64}>Large (64px)</option>
+                                                    </select>
+                                                </Field>
+                                                <Field label="Launcher Default Color">
+                                                    <div className="cf-flex-center-gap-6">
+                                                        <input
+                                                            type="color"
+                                                            className="cf-color-picker"
+                                                            value={config.buttonColor}
+                                                            onChange={(e) => updateConfig({ buttonColor: e.target.value })}
+                                                        />
+                                                        <input
+                                                            className="cf-input cf-input-w80"
+                                                            maxLength={30}
+                                                            value={config.buttonColor}
+                                                            onChange={(e) => updateConfig({ buttonColor: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </Field>
+                                            </div>
+
+                                            <div className="cf-field-grid">
+                                                <Field label="Desktop Offset X (px)">
+                                                    <input
+                                                        type="number"
+                                                        className="cf-input"
+                                                        min={0}
+                                                        max={300}
+                                                        value={config.offsetX}
+                                                        onChange={(e) => updateConfig({ offsetX: Number(e.target.value) || 0 })}
+                                                    />
+                                                </Field>
+                                                <Field label="Desktop Offset Y (px)">
+                                                    <input
+                                                        type="number"
+                                                        className="cf-input"
+                                                        min={0}
+                                                        max={300}
+                                                        value={config.offsetY}
+                                                        onChange={(e) => updateConfig({ offsetY: Number(e.target.value) || 0 })}
+                                                    />
+                                                </Field>
+                                            </div>
+
+                                            <div className="cf-field-grid">
+                                                <Field label="Mobile Offset X (px)" hint="Distance from screen edge on mobile (<640px)">
+                                                    <input
+                                                        type="number"
+                                                        className="cf-input"
+                                                        min={0}
+                                                        max={200}
+                                                        value={config.mobileOffsetX}
+                                                        onChange={(e) => updateConfig({ mobileOffsetX: Number(e.target.value) || 0 })}
+                                                    />
+                                                </Field>
+                                                <Field label="Mobile Offset Y (px)" hint="Distance from screen edge on mobile (<640px)">
+                                                    <input
+                                                        type="number"
+                                                        className="cf-input"
+                                                        min={0}
+                                                        max={200}
+                                                        value={config.mobileOffsetY}
+                                                        onChange={(e) => updateConfig({ mobileOffsetY: Number(e.target.value) || 0 })}
+                                                    />
+                                                </Field>
+                                            </div>
+
+                                            <Field label="Accessibility ARIA Label" hint="Screen reader text describing the floating launcher button">
+                                                <input
+                                                    className="cf-input"
+                                                    maxLength={80}
+                                                    value={config.ariaLabel}
+                                                    onChange={(e) => updateConfig({ ariaLabel: e.target.value })}
+                                                    placeholder="Open chat options"
+                                                />
+                                            </Field>
+
+                                            <div className="cf-field-grid">
+                                                <Field label="Unread Notification Badge">
+                                                    <div className="cf-flex-center-gap-10">
+                                                        <Switch
+                                                            checked={config.showBadge}
+                                                            onChange={(showBadge) => updateConfig({ showBadge })}
+                                                        />
+                                                        {config.showBadge && (
+                                                            <input
+                                                                className="cf-input cf-input-w60"
+                                                                maxLength={10}
+                                                                value={config.badgeText}
+                                                                onChange={(e) => updateConfig({ badgeText: e.target.value })}
+                                                                placeholder="1"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </Field>
+
+                                                <Field label="Greeting Bubble Preview">
+                                                    <div className="cf-flex-center-gap-10">
+                                                        <Switch
+                                                            checked={config.greetingEnabled}
+                                                            onChange={(greetingEnabled) => updateConfig({ greetingEnabled })}
+                                                        />
+                                                        <span className="cf-text-xs-secondary">
+                                                            {config.greetingEnabled ? "Visible" : "Hidden"}
+                                                        </span>
+                                                    </div>
+                                                </Field>
+                                            </div>
+
+                                            {config.greetingEnabled && (
+                                                <Field label="Greeting Bubble Text">
+                                                    <input
+                                                        className="cf-input"
+                                                        maxLength={200}
+                                                        value={config.greetingText}
+                                                        onChange={(e) => updateConfig({ greetingText: e.target.value })}
+                                                        placeholder="Need help? Chat with us."
+                                                    />
+                                                </Field>
+                                            )}
+                                        </Section>
+
+                                        <Section
+                                    title="Interactive Live Preview"
+                                    description="Live simulation updates automatically as you edit channels, team agents, and appearance."
                                 >
-                                    <option value="bottom-right">Bottom Right</option>
-                                    <option value="bottom-left">Bottom Left</option>
-                                    <option value="top-right">Top Right</option>
-                                    <option value="top-left">Top Left</option>
-                                </select>
-                            </Field>
-                            <Field label="Toggle Button Icon" hint="Icon displayed on the main floating toggle button">
-                                <select
-                                    className="cf-input"
-                                    value={config.launcherIcon || "chat"}
-                                    onChange={(e) => updateConfig({ launcherIcon: e.target.value as any })}
-                                >
-                                    <option value="chat">Live Chat (Speech Bubble)</option>
-                                    <option value="whatsapp">WhatsApp</option>
-                                    <option value="messenger">Messenger</option>
-                                    <option value="telegram">Telegram</option>
-                                    <option value="instagram">Instagram</option>
-                                    <option value="phone">Phone Call</option>
-                                    <option value="email">Email</option>
-                                    <option value="support">Customer Support (Headset)</option>
-                                </select>
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Button Shape">
-                                <select
-                                    className="cf-input"
-                                    value={config.buttonShape}
-                                    onChange={(e) => updateConfig({ buttonShape: e.target.value as any })}
-                                >
-                                    <option value="circle">Circle</option>
-                                    <option value="rounded">Rounded Square</option>
-                                    <option value="pill">Pill</option>
-                                </select>
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Button Menu Layout" hint="Arrange channel buttons in vertical stack, 2-column grid, or horizontal row">
-                                <select
-                                    className="cf-input"
-                                    value={config.layout}
-                                    onChange={(e) => updateConfig({ layout: e.target.value as any })}
-                                >
-                                    <option value="stack">Stack (Vertical)</option>
-                                    <option value="grid">Grid (2 Columns)</option>
-                                    <option value="horizontal">Horizontal Row</option>
-                                </select>
-                            </Field>
-                            <Field label="Entrance Animation" hint="Motion preset when launcher/window opens">
-                                <select
-                                    className="cf-input"
-                                    value={config.animation}
-                                    onChange={(e) => updateConfig({ animation: e.target.value as any })}
-                                >
-                                    <option value="pop">Pop In</option>
-                                    <option value="bounce">Playful Bounce</option>
-                                    <option value="slide">Slide Up</option>
-                                    <option value="pulse">Pulse Glow</option>
-                                    <option value="none">None (Instant)</option>
-                                </select>
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Button Size">
-                                <select
-                                    className="cf-input"
-                                    value={config.buttonSize}
-                                    onChange={(e) => updateConfig({ buttonSize: Number(e.target.value) })}
-                                >
-                                    <option value={46}>Small (46px)</option>
-                                    <option value={56}>Medium (56px)</option>
-                                    <option value={64}>Large (64px)</option>
-                                </select>
-                            </Field>
-                            <Field label="Launcher Default Color">
-                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                    <input
-                                        type="color"
-                                        className="cf-color-picker"
-                                        value={config.buttonColor}
-                                        onChange={(e) => updateConfig({ buttonColor: e.target.value })}
-                                    />
-                                    <input
-                                        className="cf-input"
-                                        style={{ width: 80 }}
-                                        maxLength={30}
-                                        value={config.buttonColor}
-                                        onChange={(e) => updateConfig({ buttonColor: e.target.value })}
-                                    />
-                                </div>
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Show Channel Labels" hint="Display text labels alongside channel buttons">
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-                                    <Switch
-                                        checked={config.showLabels}
-                                        onChange={(showLabels) => updateConfig({ showLabels })}
-                                    />
-                                    <span style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        {config.showLabels ? "Visible" : "Hidden"}
-                                    </span>
-                                </div>
-                            </Field>
-
-                            <Field label="Labels on Mobile" hint="Keep labels visible on smaller screens (<640px)">
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-                                    <Switch
-                                        checked={config.mobileShowLabels}
-                                        onChange={(mobileShowLabels) => updateConfig({ mobileShowLabels })}
-                                    />
-                                    <span style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        {config.mobileShowLabels ? "Visible" : "Hidden"}
-                                    </span>
-                                </div>
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Desktop Offset X (px)">
-                                <input
-                                    type="number"
-                                    className="cf-input"
-                                    min={0}
-                                    max={300}
-                                    value={config.offsetX}
-                                    onChange={(e) => updateConfig({ offsetX: Number(e.target.value) || 0 })}
-                                />
-                            </Field>
-                            <Field label="Desktop Offset Y (px)">
-                                <input
-                                    type="number"
-                                    className="cf-input"
-                                    min={0}
-                                    max={300}
-                                    value={config.offsetY}
-                                    onChange={(e) => updateConfig({ offsetY: Number(e.target.value) || 0 })}
-                                />
-                            </Field>
-                        </div>
-
-                        <div className="cf-field-grid">
-                            <Field label="Mobile Offset X (px)" hint="Distance from screen edge on mobile (<640px)">
-                                <input
-                                    type="number"
-                                    className="cf-input"
-                                    min={0}
-                                    max={200}
-                                    value={config.mobileOffsetX}
-                                    onChange={(e) => updateConfig({ mobileOffsetX: Number(e.target.value) || 0 })}
-                                />
-                            </Field>
-                            <Field label="Mobile Offset Y (px)" hint="Distance from screen edge on mobile (<640px)">
-                                <input
-                                    type="number"
-                                    className="cf-input"
-                                    min={0}
-                                    max={200}
-                                    value={config.mobileOffsetY}
-                                    onChange={(e) => updateConfig({ mobileOffsetY: Number(e.target.value) || 0 })}
-                                />
-                            </Field>
-                        </div>
-
-                        <Field label="Accessibility ARIA Label" hint="Screen reader text describing the floating launcher button">
-                            <input
-                                className="cf-input"
-                                maxLength={80}
-                                value={config.ariaLabel}
-                                onChange={(e) => updateConfig({ ariaLabel: e.target.value })}
-                                placeholder="Open chat options"
-                            />
-                        </Field>
-
-                        <div className="cf-field-grid">
-                            <Field label="Unread Notification Badge">
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-                                    <Switch
-                                        checked={config.showBadge}
-                                        onChange={(showBadge) => updateConfig({ showBadge })}
-                                    />
-                                    {config.showBadge && (
-                                        <input
-                                            className="cf-input"
-                                            style={{ width: 60 }}
-                                            maxLength={10}
-                                            value={config.badgeText}
-                                            onChange={(e) => updateConfig({ badgeText: e.target.value })}
-                                            placeholder="1"
-                                        />
-                                    )}
-                                </div>
-                            </Field>
-
-                            <Field label="Greeting Bubble Preview">
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-                                    <Switch
-                                        checked={config.greetingEnabled}
-                                        onChange={(greetingEnabled) => updateConfig({ greetingEnabled })}
-                                    />
-                                    <span style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        {config.greetingEnabled ? "Visible" : "Hidden"}
-                                    </span>
-                                </div>
-                            </Field>
-                        </div>
-
-                        {config.greetingEnabled && (
-                            <Field label="Greeting Bubble Text">
-                                <input
-                                    className="cf-input"
-                                    maxLength={200}
-                                    value={config.greetingText}
-                                    onChange={(e) => updateConfig({ greetingText: e.target.value })}
-                                    placeholder="Need help? Chat with us."
-                                />
-                            </Field>
+                                    {renderPreview()}
+                                </Section>
+                            </>
                         )}
-                    </Section>
-                ) : null}
 
-                {tab === "behavior" ? (
-                    <Section
-                        title="Interaction &amp; Behavior"
-                        description="Configure how and when the chat button triggers, auto-opens, and closes for site visitors."
-                    >
-                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Auto-open on Load
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Automatically pop open the chat modal or channel menu for visitors.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.autoOpen || false}
-                                    onChange={(autoOpen) => updateConfig({ autoOpen })}
-                                />
-                            </div>
+                        {/* SETTINGS TAB */}
+                        {tab === "settings" && (
+                            <>
+                                <Section
+                                    title="Widget Placement"
+                                    description="Configure the default screen anchor for your live chat floating button."
+                                >
+                                    <Field label="Screen Corner Position">
+                                        <select
+                                            className="cf-input"
+                                            value={config.position}
+                                            onChange={(e) => updateConfig({ position: e.target.value as any })}
+                                        >
+                                            <option value="bottom-right">Bottom Right (Recommended)</option>
+                                            <option value="bottom-left">Bottom Left</option>
+                                            <option value="top-right">Top Right</option>
+                                            <option value="top-left">Top Left</option>
+                                        </select>
+                                    </Field>
 
-                            {config.autoOpen && (
-                                <Field label="Auto-open Delay (Seconds)" hint="How long to wait after page load before opening">
-                                    <input
-                                        type="number"
-                                        className="cf-input"
-                                        min={0}
-                                        max={60}
-                                        value={Math.round((config.autoOpenDelay || 1200) / 1000)}
-                                        onChange={(e) => updateConfig({ autoOpenDelay: (Number(e.target.value) || 0) * 1000 })}
-                                    />
-                                </Field>
-                            )}
+                                    <div className="cf-field-grid">
+                                        <Field label="Show Channel Labels" hint="Display text labels alongside channel buttons">
+                                            <div className="cf-flex-center-gap-10">
+                                                <Switch
+                                                    checked={config.showLabels}
+                                                    onChange={(showLabels) => updateConfig({ showLabels })}
+                                                />
+                                                <span className="cf-text-xs-secondary">
+                                                    {config.showLabels ? "Visible" : "Hidden"}
+                                                </span>
+                                            </div>
+                                        </Field>
 
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Close on Outside Click
+                                        <Field label="Labels on Mobile" hint="Keep labels visible on smaller screens (<640px)">
+                                            <div className="cf-flex-center-gap-10">
+                                                <Switch
+                                                    checked={config.mobileShowLabels}
+                                                    onChange={(mobileShowLabels) => updateConfig({ mobileShowLabels })}
+                                                />
+                                                <span className="cf-text-xs-secondary">
+                                                    {config.mobileShowLabels ? "Visible" : "Hidden"}
+                                                </span>
+                                            </div>
+                                        </Field>
                                     </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Dismiss the menu or modal when visitor clicks elsewhere on the page.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.closeOnOutsideClick ?? true}
-                                    onChange={(closeOnOutsideClick) => updateConfig({ closeOnOutsideClick })}
-                                />
-                            </div>
+                                </Section>
 
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Close on Escape Key
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Press Escape to dismiss chat and return keyboard focus to the launcher.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.closeOnEscape ?? true}
-                                    onChange={(closeOnEscape) => updateConfig({ closeOnEscape })}
-                                />
-                            </div>
+                                <Section
+                                    title="Interaction &amp; Behavior"
+                                    description="Configure how and when the chat button triggers, auto-opens, and closes for site visitors."
+                                >
+                                    <div className="cf-flex-col-gap-14">
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Auto-open on Load
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Automatically pop open the chat modal or channel menu for visitors.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.autoOpen || false}
+                                                onChange={(autoOpen) => updateConfig({ autoOpen })}
+                                            />
+                                        </div>
 
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Close After Clicking Channel
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Collapse the menu after a visitor selects and opens a channel.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.closeAfterClick ?? true}
-                                    onChange={(closeAfterClick) => updateConfig({ closeAfterClick })}
-                                />
-                            </div>
+                                        {config.autoOpen && (
+                                            <Field label="Auto-open Delay (Seconds)" hint="How long to wait after page load before opening">
+                                                <input
+                                                    type="number"
+                                                    className="cf-input"
+                                                    min={0}
+                                                    max={60}
+                                                    value={Math.round((config.autoOpenDelay || 1200) / 1000)}
+                                                    onChange={(e) => updateConfig({ autoOpenDelay: (Number(e.target.value) || 0) * 1000 })}
+                                                />
+                                            </Field>
+                                        )}
 
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Open Channels in New Tab
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Launch chat app in a fresh browser tab so users keep your site open.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.openInNewTab ?? true}
-                                    onChange={(openInNewTab) => updateConfig({ openInNewTab })}
-                                />
-                            </div>
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Close on Outside Click
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Dismiss the menu or modal when visitor clicks elsewhere on the page.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.closeOnOutsideClick ?? true}
+                                                onChange={(closeOnOutsideClick) => updateConfig({ closeOnOutsideClick })}
+                                            />
+                                        </div>
 
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--cf-text)" }}>
-                                        Greeting Bubble Sound
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--cf-text-secondary)" }}>
-                                        Play a subtle notification chime when the bubble pops up.
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={config.enableSound ?? false}
-                                    onChange={(enableSound) => updateConfig({ enableSound })}
-                                />
-                            </div>
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Close on Escape Key
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Press Escape to dismiss chat and return keyboard focus to the launcher.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.closeOnEscape ?? true}
+                                                onChange={(closeOnEscape) => updateConfig({ closeOnEscape })}
+                                            />
+                                        </div>
 
-                            <Field label="Greeting Appearance Delay (Seconds)">
-                                <input
-                                    type="number"
-                                    className="cf-input"
-                                    min={0}
-                                    max={60}
-                                    value={Math.round(config.greetingDelay / 1000)}
-                                    onChange={(e) => updateConfig({ greetingDelay: (Number(e.target.value) || 0) * 1000 })}
-                                />
-                            </Field>
-                        </div>
-                    </Section>
-                ) : null}
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Close After Clicking Channel
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Collapse the menu after a visitor selects and opens a channel.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.closeAfterClick ?? true}
+                                                onChange={(closeAfterClick) => updateConfig({ closeAfterClick })}
+                                            />
+                                        </div>
+
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Open Channels in New Tab
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Launch chat app in a fresh browser tab so users keep your site open.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.openInNewTab ?? true}
+                                                onChange={(openInNewTab) => updateConfig({ openInNewTab })}
+                                            />
+                                        </div>
+
+                                        <div className="cf-flex-between">
+                                            <div>
+                                                <div className="cf-text-sm-semibold">
+                                                    Greeting Bubble Sound
+                                                </div>
+                                                <div className="cf-text-xs-secondary">
+                                                    Play a subtle notification chime when the bubble pops up.
+                                                </div>
+                                            </div>
+                                            <Switch
+                                                checked={config.enableSound ?? false}
+                                                onChange={(enableSound) => updateConfig({ enableSound })}
+                                            />
+                                        </div>
+
+                                        <Field label="Greeting Appearance Delay (Seconds)">
+                                            <input
+                                                type="number"
+                                                className="cf-input"
+                                                min={0}
+                                                max={60}
+                                                value={Math.round(config.greetingDelay / 1000)}
+                                                onChange={(e) => updateConfig({ greetingDelay: (Number(e.target.value) || 0) * 1000 })}
+                                            />
+                                        </Field>
+                                    </div>
+                                </Section>
+                            </>
+                        )}
+                    </>
+                )}
             </main>
 
-            <footer className="actions" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
-                <button
-                    type="button"
-                    className="cf-btn primary"
-                    onClick={handleInsertToCanvas}
-                    disabled={inserting}
-                    title="Insert reusable Chatfic component onto the Framer canvas"
-                >
-                    {inserting ? "Inserting..." : "Insert into Canvas"}
-                </button>
-                <button
-                    type="button"
-                    className="cf-btn secondary"
-                    onClick={reset}
-                    disabled={inserting}
-                    title="Restore default settings"
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                >
-                    <IconRefresh size={13} />
-                    <span>Reset</span>
-                </button>
+            <footer className="actions">
+                <div className="cf-footer-grid">
+                    <button
+                        type="button"
+                        className="primary-cta"
+                        onClick={handleInsertToCanvas}
+                        disabled={inserting}
+                        title="Insert reusable Chatfic component onto the Framer canvas"
+                    >
+                        <IconSparkles size={16} />
+                        <span>{inserting ? "Inserting..." : "Insert into Canvas"}</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="secondary-cta"
+                        onClick={reset}
+                        disabled={inserting}
+                        title="Restore default settings"
+                    >
+                        <IconRefresh size={13} />
+                        <span>Reset</span>
+                    </button>
+                </div>
+                <div className="cf-shell-footer-bar">
+                    <a
+                        href="https://www.framer.com/@framefic/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="cf-shell-company-link"
+                        title="View Framefic profile on Framer"
+                    >
+                        <span>@Framefic</span>
+                        <IconExternalLink size={12} />
+                    </a>
+                    <span className="cf-shell-version">v0.1.0 · Framefic</span>
+                </div>
             </footer>
         </div>
     )
