@@ -57,11 +57,13 @@ try {
     }
 } catch {}
 
-framer.showUI({
-    position: "top right",
-    width: 430,
-    height: 760,
-})
+try {
+    framer.showUI({
+        position: "top right",
+        width: 430,
+        height: 760,
+    })
+} catch {}
 
 const root = document.getElementById("root")
 if (!root) throw new Error("Root element not found")

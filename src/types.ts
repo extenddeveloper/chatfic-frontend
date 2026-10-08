@@ -9,7 +9,14 @@ export type ChannelId =
     | "line"
     | "signal"
     | "phone"
+    | "sms"
     | "email"
+    | "discord"
+    | "slack"
+    | "teams"
+    | "x"
+    | "linkedin"
+    | "maps"
     | "custom"
 
 export type WidgetPosition = "bottom-right" | "bottom-left" | "top-right" | "top-left"
@@ -82,6 +89,7 @@ export interface ChatConfig {
     autoOpen: boolean
     autoOpenDelay: number
     enableSound?: boolean
+    enableAnalytics?: boolean
     openInNewTab?: boolean
     closeAfterClick: boolean
     closeOnOutsideClick: boolean
@@ -90,4 +98,19 @@ export interface ChatConfig {
     mobileOffsetX: number
     mobileOffsetY: number
     ariaLabel: string
+    // Behavioral Triggers & Smart Display
+    scrollTriggerEnabled?: boolean
+    scrollTriggerPercent?: number
+    scrollTriggerTarget?: "launcher" | "greeting"
+    exitIntentEnabled?: boolean
+    exitIntentAction?: "modal" | "greeting"
+    scheduleEnabled?: boolean
+    scheduleDays?: number[]
+    scheduleStart?: string
+    scheduleEnd?: string
+    scheduleOfflineAction?: "badge" | "hide"
+    scheduleOfflineText?: string
+    targetingEnabled?: boolean
+    targetingMode?: "show" | "hide"
+    targetingRules?: string
 }

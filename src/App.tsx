@@ -34,7 +34,9 @@ import {
     IconPluginSlider,
     IconPluginAnnouncement,
     IconPluginConnect,
+    IconVolume,
 } from "./ui/icons"
+import { playNotificationChime } from "./core/sound"
 import "./ui/styles.css"
 
 type Tab = "home" | "builder" | "design" | "settings"
@@ -98,10 +100,45 @@ const channelMeta: Record<ChannelId, { label: string; placeholder: string; hint:
         placeholder: "+1 234 567 8900",
         hint: "Direct dial phone number.",
     },
+    sms: {
+        label: "SMS Phone Number",
+        placeholder: "+1 234 567 8900",
+        hint: "Mobile number for SMS text messages.",
+    },
     email: {
         label: "Email Address",
         placeholder: "hello@yourcompany.com",
         hint: "Contact email for visitors.",
+    },
+    discord: {
+        label: "Discord Invite / Server",
+        placeholder: "https://discord.gg/yourserver or invite code",
+        hint: "Discord invite code or full invite URL.",
+    },
+    slack: {
+        label: "Slack Workspace / Channel",
+        placeholder: "https://join.slack.com/t/...",
+        hint: "Public Slack community invite link or workspace URL.",
+    },
+    teams: {
+        label: "Microsoft Teams User / Link",
+        placeholder: "email@company.com or meeting link",
+        hint: "User email or Teams direct conversation link.",
+    },
+    x: {
+        label: "X (Twitter) Handle",
+        placeholder: "username",
+        hint: "X handle without @ or profile URL.",
+    },
+    linkedin: {
+        label: "LinkedIn Profile / Company",
+        placeholder: "in/username or company/name",
+        hint: "Profile slug, company path, or full LinkedIn URL.",
+    },
+    maps: {
+        label: "Google Maps Address / Link",
+        placeholder: "1600 Amphitheatre Pkwy or Google Maps URL",
+        hint: "Store address or Google Maps location link.",
     },
     custom: {
         label: "Custom URL Link",
@@ -225,6 +262,24 @@ export function App() {
         const key = config.modalTheme || "whatsapp"
         return `cf-theme-grad-${key}`
     }, [config.modalTheme])
+
+    const isScheduleOffline = useMemo(() => {
+        if (!config.scheduleEnabled) return false
+        const now = new Date()
+        const curDay = now.getDay()
+        const days = config.scheduleDays || [1, 2, 3, 4, 5]
+        if (!days.includes(curDay)) return true
+        const curMins = now.getHours() * 60 + now.getMinutes()
+        const [sH, sM] = (config.scheduleStart || "09:00").split(":").map(Number)
+        const [eH, eM] = (config.scheduleEnd || "18:00").split(":").map(Number)
+        const sMins = (sH || 9) * 60 + (sM || 0)
+        const eMins = (eH || 18) * 60 + (eM || 0)
+        if (sMins <= eMins) {
+            return curMins < sMins || curMins >= eMins
+        } else {
+            return curMins < sMins && curMins >= eMins
+        }
+    }, [config.scheduleEnabled, config.scheduleDays, config.scheduleStart, config.scheduleEnd])
 
     function updateConfig(patch: Partial<ChatConfig>) {
         setConfig((current) => normalizeConfig({ ...current, ...patch }))
@@ -434,9 +489,11 @@ export function App() {
                                     <p className="preview-modal-subtitle">
                                         {config.modalSubtitle || "Welcome to our live chat! Feel free to ask any questions."}
                                     </p>
-                                    <div className="preview-modal-badge">
-                                        <span className="preview-modal-dot" />
-                                        {config.modalResponseTime || "Typically replies in minutes"}
+                                    <div className={`preview-modal-badge ${isScheduleOffline ? "offline" : ""}`}>
+                                        <span className={`preview-modal-dot ${isScheduleOffline ? "offline" : ""}`} />
+                                        {isScheduleOffline
+                                            ? (config.scheduleOfflineText || "Back tomorrow at 9:00 AM")
+                                            : (config.modalResponseTime || "Typically replies in minutes")}
                                     </div>
                                 </div>
 
@@ -501,13 +558,14 @@ export function App() {
                                                     >
                                                         <div className="preview-agent-avatar-wrap">
                                                             <img src={agent.avatar} alt={agent.name} />
-                                                            {agent.online !== false && <span className="preview-agent-online-dot" />}
+                                                            {agent.online !== false && !isScheduleOffline && <span className="preview-agent-online-dot" />}
+                                                            {isScheduleOffline && <span className="preview-agent-offline-dot" />}
                                                         </div>
                                                         <div className="preview-agent-details">
                                                             <span className="preview-agent-name">{agent.name}</span>
                                                             <span className="preview-agent-role">
                                                                 {agent.role}
-                                                                {agent.value ? ` • ${agent.value}` : ""}
+                                                                {isScheduleOffline ? " • Offline" : (agent.value ? ` • ${agent.value}` : "")}
                                                             </span>
                                                         </div>
                                                         <span
@@ -548,7 +606,15 @@ export function App() {
                         ) : null}
 
                         {!previewOpen && config.greetingEnabled && (
-                            <div className="preview-greeting-pill">
+                            <div
+                                className="preview-greeting-pill"
+                                onClick={() => {
+                                    if (config.enableSound) {
+                                        playNotificationChime()
+                                    }
+                                }}
+                                title={config.enableSound ? "Click to hear notification sound preview" : undefined}
+                            >
                                 {config.greetingText || "Need help? Chat with us."}
                             </div>
                         )}
@@ -835,8 +901,8 @@ export function App() {
 
                                 {builderSubTab === "channels" && (
                                     <Section
-                                        title="Messaging Channels (12 Platforms Supported)"
-                                        description="Configure your handles, phone numbers, and pre-filled messages. Enable any combination of channels for your visitors."
+                                        title={`Messaging Channels (${config.channels.length} Platforms Supported)`}
+                                        description="Configure handles, phone numbers, and pre-filled greetings for your visitors."
                                     >
                                         {config.channels.map((channel) => {
                                             const meta = channelMeta[channel.id]
@@ -894,17 +960,17 @@ export function App() {
                                                                     </div>
                                                                 </Field>
                                                             </div>
-                                                            {["whatsapp", "telegram"].includes(channel.id) && (
+                                                            {["whatsapp", "telegram", "sms"].includes(channel.id) && (
                                                                 <Field
                                                                     label="Pre-filled Welcome Message"
-                                                                    hint="Automatically fills visitor's chat input."
+                                                                    hint="Automatically fills visitor's chat input. Supports {url} and {title} variables."
                                                                 >
                                                                     <input
                                                                         className="cf-input"
                                                                         maxLength={300}
                                                                         value={channel.message || ""}
                                                                         onChange={(e) => updateChannel(channel.id, { message: e.target.value })}
-                                                                        placeholder="Hello! I'd like to know more."
+                                                                        placeholder="Hello! I'd like to know more about {title}."
                                                                     />
                                                                 </Field>
                                                             )}
@@ -1715,7 +1781,7 @@ export function App() {
                                 >
                                     <div className="cf-flex-col-gap-14">
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Auto-open on Load
                                                 </div>
@@ -1743,7 +1809,7 @@ export function App() {
                                         )}
 
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Close on Outside Click
                                                 </div>
@@ -1758,7 +1824,7 @@ export function App() {
                                         </div>
 
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Close on Escape Key
                                                 </div>
@@ -1773,7 +1839,7 @@ export function App() {
                                         </div>
 
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Close After Clicking Channel
                                                 </div>
@@ -1788,7 +1854,7 @@ export function App() {
                                         </div>
 
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Open Channels in New Tab
                                                 </div>
@@ -1803,7 +1869,7 @@ export function App() {
                                         </div>
 
                                         <div className="cf-flex-between">
-                                            <div>
+                                            <div className="cf-setting-info">
                                                 <div className="cf-text-sm-semibold">
                                                     Greeting Bubble Sound
                                                 </div>
@@ -1811,10 +1877,26 @@ export function App() {
                                                     Play a subtle notification chime when the bubble pops up.
                                                 </div>
                                             </div>
-                                            <Switch
-                                                checked={config.enableSound ?? false}
-                                                onChange={(enableSound) => updateConfig({ enableSound })}
-                                            />
+                                            <div className="cf-flex-center-gap-8">
+                                                <button
+                                                    type="button"
+                                                    className="cf-btn-test-chime"
+                                                    onClick={() => playNotificationChime()}
+                                                    title="Listen to notification sound preview"
+                                                >
+                                                    <IconVolume size={13} />
+                                                    <span>Test Sound</span>
+                                                </button>
+                                                <Switch
+                                                    checked={config.enableSound ?? false}
+                                                    onChange={(enableSound) => {
+                                                        updateConfig({ enableSound })
+                                                        if (enableSound) {
+                                                            playNotificationChime()
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
 
                                         <Field label="Greeting Appearance Delay (Seconds)">
@@ -1827,6 +1909,259 @@ export function App() {
                                                 onChange={(e) => updateConfig({ greetingDelay: (Number(e.target.value) || 0) * 1000 })}
                                             />
                                         </Field>
+                                    </div>
+                                </Section>
+
+                                <Section
+                                    title="Behavioral Triggers & Smart Display"
+                                    description="Enterprise triggers: scroll depth, desktop exit-intent, operating hours schedule, and URL path targeting."
+                                >
+                                    <div className="cf-flex-col-gap-14">
+                                        {/* 1. Scroll Depth Trigger */}
+                                        <div className={`cf-trigger-card ${config.scrollTriggerEnabled ? "is-active" : ""}`}>
+                                            <div className="cf-trigger-card-header">
+                                                <div className="cf-trigger-info">
+                                                    <div className="cf-trigger-title">Scroll Depth Trigger</div>
+                                                    <div className="cf-trigger-desc">
+                                                        Only reveal the floating launcher or greeting bubble after visitor scrolls past a percentage of the page.
+                                                    </div>
+                                                </div>
+                                                <Switch
+                                                    checked={config.scrollTriggerEnabled || false}
+                                                    onChange={(scrollTriggerEnabled) => updateConfig({ scrollTriggerEnabled })}
+                                                />
+                                            </div>
+                                            {config.scrollTriggerEnabled && (
+                                                <div className="cf-trigger-body">
+                                                    <Field label="Scroll Percentage Threshold" hint="Reveal after visitor scrolls past this depth">
+                                                        <div className="cf-flex-center-gap-10">
+                                                            <input
+                                                                type="range"
+                                                                min={5}
+                                                                max={95}
+                                                                step={5}
+                                                                className="cf-range-input"
+                                                                value={config.scrollTriggerPercent ?? 25}
+                                                                onChange={(e) => updateConfig({ scrollTriggerPercent: Number(e.target.value) })}
+                                                            />
+                                                            <span className="cf-badge-value">{config.scrollTriggerPercent ?? 25}%</span>
+                                                        </div>
+                                                    </Field>
+                                                    <Field label="Trigger Target" hint="Choose what to reveal once threshold is met">
+                                                        <select
+                                                            className="cf-input"
+                                                            value={config.scrollTriggerTarget || "launcher"}
+                                                            onChange={(e) => updateConfig({ scrollTriggerTarget: e.target.value as any })}
+                                                        >
+                                                            <option value="launcher">Floating Launcher (Reveal Entire Widget)</option>
+                                                            <option value="greeting">Greeting Bubble Only (Launcher Stays Visible)</option>
+                                                        </select>
+                                                    </Field>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 2. Exit-Intent Trigger (Desktop) */}
+                                        <div className={`cf-trigger-card ${config.exitIntentEnabled ? "is-active" : ""}`}>
+                                            <div className="cf-trigger-card-header">
+                                                <div className="cf-trigger-info">
+                                                    <div className="cf-trigger-title">Exit-Intent Trigger (Desktop)</div>
+                                                    <div className="cf-trigger-desc">
+                                                        Detect when desktop visitors move cursor towards the browser tab bar to exit, re-engaging them before they leave.
+                                                    </div>
+                                                </div>
+                                                <Switch
+                                                    checked={config.exitIntentEnabled || false}
+                                                    onChange={(exitIntentEnabled) => updateConfig({ exitIntentEnabled })}
+                                                />
+                                            </div>
+                                            {config.exitIntentEnabled && (
+                                                <div className="cf-trigger-body">
+                                                    <Field label="Exit-Intent Action" hint="Action to take when visitor heads to leave">
+                                                        <select
+                                                            className="cf-input"
+                                                            value={config.exitIntentAction || "modal"}
+                                                            onChange={(e) => updateConfig({ exitIntentAction: e.target.value as any })}
+                                                        >
+                                                            <option value="modal">Pop Open Chat Window (High Conversion)</option>
+                                                            <option value="greeting">Display Greeting Bubble (Subtle Notice)</option>
+                                                        </select>
+                                                    </Field>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 3. Operating Hours & Days Schedule */}
+                                        <div className={`cf-trigger-card ${config.scheduleEnabled ? "is-active" : ""}`}>
+                                            <div className="cf-trigger-card-header">
+                                                <div className="cf-trigger-info">
+                                                    <div className="cf-trigger-title">Operating Hours & Days Schedule</div>
+                                                    <div className="cf-trigger-desc">
+                                                        Set working hours. Automatically switch agent badges to Offline outside office hours, or adjust the response badge.
+                                                    </div>
+                                                </div>
+                                                <Switch
+                                                    checked={config.scheduleEnabled || false}
+                                                    onChange={(scheduleEnabled) => updateConfig({ scheduleEnabled })}
+                                                />
+                                            </div>
+                                            {config.scheduleEnabled && (
+                                                <div className="cf-trigger-body">
+                                                    <Field label="Operating Days" hint="Select active days of the week">
+                                                        <div className="cf-day-selector">
+                                                            {[
+                                                                { label: "Mon", day: 1 },
+                                                                { label: "Tue", day: 2 },
+                                                                { label: "Wed", day: 3 },
+                                                                { label: "Thu", day: 4 },
+                                                                { label: "Fri", day: 5 },
+                                                                { label: "Sat", day: 6 },
+                                                                { label: "Sun", day: 0 },
+                                                            ].map(({ label, day }) => {
+                                                                const isActive = (config.scheduleDays || [1, 2, 3, 4, 5]).includes(day)
+                                                                return (
+                                                                    <button
+                                                                        key={day}
+                                                                        type="button"
+                                                                        className={`cf-day-pill ${isActive ? "active" : ""}`}
+                                                                        onClick={() => {
+                                                                            const current = config.scheduleDays || [1, 2, 3, 4, 5]
+                                                                            const next = isActive
+                                                                                ? current.filter((d) => d !== day)
+                                                                                : [...current, day]
+                                                                            if (next.length > 0) {
+                                                                                updateConfig({ scheduleDays: next })
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {label}
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                        <div className="cf-day-presets">
+                                                            <button
+                                                                type="button"
+                                                                className={`cf-preset-pill ${
+                                                                    (config.scheduleDays || [1, 2, 3, 4, 5]).length === 5 &&
+                                                                    [1, 2, 3, 4, 5].every((d) => (config.scheduleDays || [1, 2, 3, 4, 5]).includes(d))
+                                                                        ? "is-active"
+                                                                        : ""
+                                                                }`}
+                                                                onClick={() => updateConfig({ scheduleDays: [1, 2, 3, 4, 5] })}
+                                                            >
+                                                                Weekdays (Mon-Fri)
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className={`cf-preset-pill ${
+                                                                    (config.scheduleDays || [1, 2, 3, 4, 5]).length === 2 &&
+                                                                    [6, 0].every((d) => (config.scheduleDays || [1, 2, 3, 4, 5]).includes(d))
+                                                                        ? "is-active"
+                                                                        : ""
+                                                                }`}
+                                                                onClick={() => updateConfig({ scheduleDays: [6, 0] })}
+                                                            >
+                                                                Weekends
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className={`cf-preset-pill ${
+                                                                    (config.scheduleDays || [1, 2, 3, 4, 5]).length === 7
+                                                                        ? "is-active"
+                                                                        : ""
+                                                                }`}
+                                                                onClick={() => updateConfig({ scheduleDays: [1, 2, 3, 4, 5, 6, 0] })}
+                                                            >
+                                                                All 7 Days
+                                                            </button>
+                                                        </div>
+                                                    </Field>
+
+                                                    <div className="cf-field-grid">
+                                                        <Field label="Opening Time" hint="Store opening time">
+                                                            <input
+                                                                type="time"
+                                                                className="cf-input"
+                                                                value={config.scheduleStart || "09:00"}
+                                                                onChange={(e) => updateConfig({ scheduleStart: e.target.value })}
+                                                            />
+                                                        </Field>
+                                                        <Field label="Closing Time" hint="Store closing time">
+                                                            <input
+                                                                type="time"
+                                                                className="cf-input"
+                                                                value={config.scheduleEnd || "18:00"}
+                                                                onChange={(e) => updateConfig({ scheduleEnd: e.target.value })}
+                                                            />
+                                                        </Field>
+                                                    </div>
+
+                                                    <div className="cf-field-grid">
+                                                        <Field label="Outside Hours Action" hint="What happens outside business hours">
+                                                            <select
+                                                                className="cf-input"
+                                                                value={config.scheduleOfflineAction || "badge"}
+                                                                onChange={(e) => updateConfig({ scheduleOfflineAction: e.target.value as any })}
+                                                            >
+                                                                <option value="badge">Show "Offline" Badge & Notice</option>
+                                                                <option value="hide">Hide Widget Completely</option>
+                                                            </select>
+                                                        </Field>
+                                                        {config.scheduleOfflineAction !== "hide" && (
+                                                            <Field label="Offline Badge Notice" hint="Header badge shown outside hours">
+                                                                <input
+                                                                    className="cf-input"
+                                                                    maxLength={80}
+                                                                    value={config.scheduleOfflineText || "Back tomorrow at 9:00 AM"}
+                                                                    onChange={(e) => updateConfig({ scheduleOfflineText: e.target.value })}
+                                                                    placeholder="Back tomorrow at 9:00 AM"
+                                                                />
+                                                            </Field>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 4. Page / URL Targeting Filter */}
+                                        <div className={`cf-trigger-card ${config.targetingEnabled ? "is-active" : ""}`}>
+                                            <div className="cf-trigger-card-header">
+                                                <div className="cf-trigger-info">
+                                                    <div className="cf-trigger-title">Page / URL Targeting Filter</div>
+                                                    <div className="cf-trigger-desc">
+                                                        Show or hide the widget on specific page paths (e.g., hide on /checkout or only show on /pricing).
+                                                    </div>
+                                                </div>
+                                                <Switch
+                                                    checked={config.targetingEnabled || false}
+                                                    onChange={(targetingEnabled) => updateConfig({ targetingEnabled })}
+                                                />
+                                            </div>
+                                            {config.targetingEnabled && (
+                                                <div className="cf-trigger-body">
+                                                    <Field label="Targeting Mode" hint="Show only on listed paths, or hide on listed paths">
+                                                        <select
+                                                            className="cf-input"
+                                                            value={config.targetingMode || "show"}
+                                                            onChange={(e) => updateConfig({ targetingMode: e.target.value as any })}
+                                                        >
+                                                            <option value="show">Show Widget Only on Listed Paths</option>
+                                                            <option value="hide">Hide Widget on Listed Paths (Show Everywhere Else)</option>
+                                                        </select>
+                                                    </Field>
+                                                    <Field label="URL Paths & Wildcards" hint="Enter paths separated by lines or commas. Use * for wildcards (e.g. /checkout, /blog/*)">
+                                                        <textarea
+                                                            className="cf-textarea"
+                                                            rows={3}
+                                                            value={config.targetingRules || ""}
+                                                            onChange={(e) => updateConfig({ targetingRules: e.target.value })}
+                                                            placeholder={"/pricing\n/checkout\n/products/*"}
+                                                        />
+                                                    </Field>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </Section>
                             </>

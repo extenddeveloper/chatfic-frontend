@@ -30,7 +30,14 @@ export const DEFAULT_CHANNELS: ChatChannel[] = [
     { id: "line", enabled: false, label: "LINE", value: "", color: "#06C755", openInNewTab: true },
     { id: "signal", enabled: false, label: "Signal", value: "", color: "#3A76F0", openInNewTab: true },
     { id: "phone", enabled: false, label: "Phone", value: "", color: "#111827", openInNewTab: false },
+    { id: "sms", enabled: false, label: "SMS", value: "", message: "Hello! I have a question about {title}.", color: "#10B981", openInNewTab: false },
     { id: "email", enabled: false, label: "Email", value: "", color: "#EA4335", openInNewTab: false },
+    { id: "discord", enabled: false, label: "Discord", value: "", color: "#5865F2", openInNewTab: true },
+    { id: "slack", enabled: false, label: "Slack", value: "", color: "#4A154B", openInNewTab: true },
+    { id: "teams", enabled: false, label: "Microsoft Teams", value: "", color: "#6264A7", openInNewTab: true },
+    { id: "x", enabled: false, label: "X (Twitter)", value: "", color: "#000000", openInNewTab: true },
+    { id: "linkedin", enabled: false, label: "LinkedIn", value: "", color: "#0A66C2", openInNewTab: true },
+    { id: "maps", enabled: false, label: "Google Maps", value: "", color: "#EA4335", openInNewTab: true },
     { id: "custom", enabled: false, label: "Custom", value: "", color: "#111827", openInNewTab: true },
 ]
 
@@ -101,6 +108,7 @@ export const DEFAULT_CONFIG: ChatConfig = {
     autoOpen: false,
     autoOpenDelay: 1200,
     enableSound: false,
+    enableAnalytics: true,
     openInNewTab: true,
     closeAfterClick: true,
     closeOnOutsideClick: true,
@@ -109,6 +117,20 @@ export const DEFAULT_CONFIG: ChatConfig = {
     mobileOffsetX: 16,
     mobileOffsetY: 16,
     ariaLabel: "Open chat options",
+    scrollTriggerEnabled: false,
+    scrollTriggerPercent: 25,
+    scrollTriggerTarget: "launcher",
+    exitIntentEnabled: false,
+    exitIntentAction: "modal",
+    scheduleEnabled: false,
+    scheduleDays: [1, 2, 3, 4, 5],
+    scheduleStart: "09:00",
+    scheduleEnd: "18:00",
+    scheduleOfflineAction: "badge",
+    scheduleOfflineText: "Back tomorrow at 9:00 AM",
+    targetingEnabled: false,
+    targetingMode: "show",
+    targetingRules: "",
 }
 
 export function normalizeConfig(input: Partial<ChatConfig> | null | undefined): ChatConfig {
@@ -117,7 +139,7 @@ export function normalizeConfig(input: Partial<ChatConfig> | null | undefined): 
     const defaultIds = new Set(DEFAULT_CHANNELS.map((c) => c.id))
     const extraChannels = (source.channels || []).filter((c) => !defaultIds.has(c.id))
 
-    // Always ensure all 12 default platforms exist in their canonical order, overlaying saved user configs
+    // Always ensure all 19 default platforms exist in their canonical order, overlaying saved user configs
     const channels = [
         ...DEFAULT_CHANNELS.map((defaultChannel) => {
             const saved = savedChannelsMap.get(defaultChannel.id)

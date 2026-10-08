@@ -259,9 +259,60 @@ export function resolveSafeChannelUrl(channelId: ChannelId, rawValue: string, ra
             const cleanDigits = value.replace(/[^0-9+]/g, "")
             return cleanDigits ? "tel:" + cleanDigits : "tel:"
         }
+        case "sms": {
+            const cleanDigits = value.replace(/[^0-9+]/g, "")
+            return cleanDigits
+                ? "sms:" + cleanDigits + (message ? "?body=" + encode(message) : "")
+                : "sms:"
+        }
         case "email": {
             const cleanEmail = sanitizeEmail(value)
             return cleanEmail ? "mailto:" + cleanEmail : "mailto:"
+        }
+        case "discord": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://discord.com/")
+            }
+            const handle = sanitizeHandle(value)
+            return handle ? "https://discord.gg/" + handle : "https://discord.com/"
+        }
+        case "slack": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://slack.com/")
+            }
+            const clean = sanitizeText(value, 120, "")
+            return clean ? "https://" + clean : "https://slack.com/"
+        }
+        case "teams": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://teams.microsoft.com/")
+            }
+            const clean = sanitizeText(value, 120, "")
+            return clean ? "https://teams.microsoft.com/l/chat/0/0?users=" + encode(clean) : "https://teams.microsoft.com/"
+        }
+        case "x": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://x.com/")
+            }
+            const handle = sanitizeHandle(value)
+            return handle ? "https://x.com/" + handle : "https://x.com/"
+        }
+        case "linkedin": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://www.linkedin.com/")
+            }
+            const clean = sanitizeText(value, 120, "").replace(/^@+/, "")
+            if (clean.startsWith("in/") || clean.startsWith("company/")) {
+                return "https://www.linkedin.com/" + clean
+            }
+            return clean ? "https://www.linkedin.com/in/" + encode(clean) : "https://www.linkedin.com/"
+        }
+        case "maps": {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                return sanitizeUrl(value, ["http:", "https:"], "https://maps.google.com/")
+            }
+            const query = sanitizeText(value, 200, "")
+            return query ? "https://www.google.com/maps/search/?api=1&query=" + encode(query) : "https://maps.google.com/"
         }
         case "custom": {
             return sanitizeUrl(value, ["http:", "https:"], "")
@@ -348,6 +399,30 @@ export function sanitizeConfig(config: Partial<ChatConfig>): ChatConfig {
         ? config.agents.map(sanitizeAgent)
         : []
 
+    const validScrollTargets = ["launcher", "greeting"] as const
+    const scrollTriggerTarget = validScrollTargets.includes(config.scrollTriggerTarget as any)
+        ? (config.scrollTriggerTarget as "launcher" | "greeting")
+        : "launcher"
+
+    const validExitIntentActions = ["modal", "greeting"] as const
+    const exitIntentAction = validExitIntentActions.includes(config.exitIntentAction as any)
+        ? (config.exitIntentAction as "modal" | "greeting")
+        : "modal"
+
+    const validOfflineActions = ["badge", "hide"] as const
+    const scheduleOfflineAction = validOfflineActions.includes(config.scheduleOfflineAction as any)
+        ? (config.scheduleOfflineAction as "badge" | "hide")
+        : "badge"
+
+    const validTargetingModes = ["show", "hide"] as const
+    const targetingMode = validTargetingModes.includes(config.targetingMode as any)
+        ? (config.targetingMode as "show" | "hide")
+        : "show"
+
+    const scheduleDays = Array.isArray(config.scheduleDays)
+        ? config.scheduleDays.filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6)
+        : [1, 2, 3, 4, 5]
+
     return {
         enabled: Boolean(config.enabled ?? true),
         widgetMode,
@@ -403,6 +478,7 @@ export function sanitizeConfig(config: Partial<ChatConfig>): ChatConfig {
         autoOpen: Boolean(config.autoOpen ?? false),
         autoOpenDelay: sanitizeNumber(config.autoOpenDelay, 0, 60000, 1200),
         enableSound: Boolean(config.enableSound ?? false),
+        enableAnalytics: Boolean(config.enableAnalytics ?? true),
         openInNewTab: Boolean(config.openInNewTab ?? true),
         closeAfterClick: Boolean(config.closeAfterClick ?? true),
         closeOnOutsideClick: Boolean(config.closeOnOutsideClick ?? true),
@@ -411,5 +487,19 @@ export function sanitizeConfig(config: Partial<ChatConfig>): ChatConfig {
         mobileOffsetX: sanitizeNumber(config.mobileOffsetX, 0, 200, 16),
         mobileOffsetY: sanitizeNumber(config.mobileOffsetY, 0, 200, 16),
         ariaLabel: sanitizeText(config.ariaLabel, 80, "Open chat options"),
+        scrollTriggerEnabled: Boolean(config.scrollTriggerEnabled ?? false),
+        scrollTriggerPercent: sanitizeNumber(config.scrollTriggerPercent, 1, 100, 25),
+        scrollTriggerTarget,
+        exitIntentEnabled: Boolean(config.exitIntentEnabled ?? false),
+        exitIntentAction,
+        scheduleEnabled: Boolean(config.scheduleEnabled ?? false),
+        scheduleDays: scheduleDays.length > 0 ? scheduleDays : [1, 2, 3, 4, 5],
+        scheduleStart: sanitizeText(config.scheduleStart, 10, "09:00"),
+        scheduleEnd: sanitizeText(config.scheduleEnd, 10, "18:00"),
+        scheduleOfflineAction,
+        scheduleOfflineText: sanitizeText(config.scheduleOfflineText, 100, "Back tomorrow at 9:00 AM"),
+        targetingEnabled: Boolean(config.targetingEnabled ?? false),
+        targetingMode,
+        targetingRules: sanitizeMultilineText(config.targetingRules, 1000, ""),
     }
 }

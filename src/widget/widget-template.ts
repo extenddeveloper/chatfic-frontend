@@ -93,6 +93,21 @@ export function buildWidgetCode(config: ChatConfig): string {
         mobileOffsetX: config.mobileOffsetX,
         mobileOffsetY: config.mobileOffsetY,
         ariaLabel: config.ariaLabel,
+        enableAnalytics: config.enableAnalytics !== false,
+        scrollTriggerEnabled: Boolean(config.scrollTriggerEnabled),
+        scrollTriggerPercent: Number(config.scrollTriggerPercent ?? 25),
+        scrollTriggerTarget: config.scrollTriggerTarget || "launcher",
+        exitIntentEnabled: Boolean(config.exitIntentEnabled),
+        exitIntentAction: config.exitIntentAction || "modal",
+        scheduleEnabled: Boolean(config.scheduleEnabled),
+        scheduleDays: Array.isArray(config.scheduleDays) ? config.scheduleDays : [1, 2, 3, 4, 5],
+        scheduleStart: config.scheduleStart || "09:00",
+        scheduleEnd: config.scheduleEnd || "18:00",
+        scheduleOfflineAction: config.scheduleOfflineAction || "badge",
+        scheduleOfflineText: config.scheduleOfflineText || "Back tomorrow at 9:00 AM",
+        targetingEnabled: Boolean(config.targetingEnabled),
+        targetingMode: config.targetingMode || "show",
+        targetingRules: config.targetingRules || "",
     })
 
     return `<script>
@@ -105,6 +120,61 @@ export function buildWidgetCode(config: ChatConfig): string {
   var STYLE_ID = "scb-pro-widget-style";
 
   if (!SETTINGS.enabled || (!CHANNELS.length && !AGENTS.length)) return;
+
+  /* 1. Page / URL Targeting Filter */
+  if (SETTINGS.targetingEnabled && SETTINGS.targetingRules) {
+    try {
+      var curPath = (window.location && window.location.pathname) ? window.location.pathname : "/";
+      var normPath = curPath.toLowerCase();
+      var rawRules = String(SETTINGS.targetingRules).split(/[\n,]/);
+      var rules = [];
+      for (var rIdx = 0; rIdx < rawRules.length; rIdx++) {
+        var rTrim = rawRules[rIdx].trim().toLowerCase();
+        if (rTrim) rules.push(rTrim);
+      }
+      if (rules.length > 0) {
+        var isMatch = rules.some(function(rule) {
+          if (rule.slice(-1) === "*") {
+            var prefix = rule.slice(0, -1);
+            return normPath.indexOf(prefix) === 0;
+          }
+          return normPath === rule || normPath === rule + "/" || (rule.slice(-1) === "/" && normPath + "/" === rule);
+        });
+        if (SETTINGS.targetingMode === "hide" && isMatch) return;
+        if (SETTINGS.targetingMode === "show" && !isMatch) return;
+      }
+    } catch(e) {}
+  }
+
+  /* 2. Operating Hours & Days Schedule Check */
+  var isOnline = true;
+  if (SETTINGS.scheduleEnabled) {
+    try {
+      var now = new Date();
+      var currentDay = now.getDay();
+      var days = Array.isArray(SETTINGS.scheduleDays) ? SETTINGS.scheduleDays : [1, 2, 3, 4, 5];
+      if (days.indexOf(currentDay) === -1) {
+        isOnline = false;
+      } else {
+        var curMinutes = now.getHours() * 60 + now.getMinutes();
+        var sParts = String(SETTINGS.scheduleStart || "09:00").split(":");
+        var eParts = String(SETTINGS.scheduleEnd || "18:00").split(":");
+        var sMins = (parseInt(sParts[0], 10) || 9) * 60 + (parseInt(sParts[1], 10) || 0);
+        var eMins = (parseInt(eParts[0], 10) || 18) * 60 + (parseInt(eParts[1], 10) || 0);
+        if (sMins <= eMins) {
+          isOnline = (curMinutes >= sMins && curMinutes < eMins);
+        } else {
+          isOnline = (curMinutes >= sMins || curMinutes < eMins);
+        }
+      }
+    } catch(e) {
+      isOnline = true;
+    }
+
+    if (!isOnline && SETTINGS.scheduleOfflineAction === "hide") {
+      return;
+    }
+  }
 
   var existing = document.getElementById(ROOT_ID);
   if (existing) existing.remove();
@@ -231,6 +301,12 @@ export function buildWidgetCode(config: ChatConfig): string {
         transition-duration: 0.001ms !important;
       }
     }
+
+    /* Behavioral Triggers & Offline Styling */
+    #\${ROOT_ID}.scb-scroll-hidden{opacity:0 !important;pointer-events:none !important;transform:translateY(24px) !important;transition:opacity .35s ease,transform .35s ease !important}
+    #\${ROOT_ID}.scb-scroll-visible{opacity:1 !important;pointer-events:auto !important;transform:none !important}
+    .scb-modal-badge.offline{background:rgba(0,0,0,.28);color:rgba(255,255,255,.92)}
+    .scb-agent-badge.offline{background:#6b7280 !important}
   \`;
 
   document.head.appendChild(style);
@@ -241,9 +317,48 @@ export function buildWidgetCode(config: ChatConfig): string {
     return el;
   }
 
+  function formatDynamicUrl(rawUrl){
+    if(!rawUrl) return "";
+    try {
+      var curUrl = encodeURIComponent(window.location.href);
+      var curTitle = encodeURIComponent(document.title);
+      return rawUrl
+        .replace(/%7Burl%7D|%7Bpage_url%7D|\{url\}|\{page_url\}/gi, curUrl)
+        .replace(/%7Btitle%7D|%7Bpage_title%7D|\{title\}|\{page_title\}/gi, curTitle);
+    } catch(e){
+      return rawUrl;
+    }
+  }
+
+  function trackClick(channelId, channelLabel, agentName, targetUrl){
+    if(!SETTINGS.enableAnalytics) return;
+    try {
+      if(typeof window.gtag === "function"){
+        window.gtag("event", "chatfic_click", {
+          event_category: "Chatfic",
+          event_label: channelLabel || channelId,
+          channel_id: channelId,
+          channel_name: channelLabel || channelId,
+          agent_name: agentName || "",
+          target_url: targetUrl || ""
+        });
+      }
+      if(Array.isArray(window.dataLayer)){
+        window.dataLayer.push({
+          event: "chatfic_click",
+          chatfic_channel: channelId,
+          chatfic_channel_name: channelLabel || channelId,
+          chatfic_agent: agentName || "",
+          chatfic_target_url: targetUrl || ""
+        });
+      }
+    } catch(e){}
+  }
+
   var activeAgent = null;
 
   function openDirectChat(agent){
+    trackClick(agent.channelId, agent.channelId, agent.name, agent.url);
     activeAgent = agent;
     render();
   }
@@ -311,9 +426,13 @@ export function buildWidgetCode(config: ChatConfig): string {
         subtitle.textContent = SETTINGS.modalSubtitle;
         header.appendChild(subtitle);
 
-        if(SETTINGS.modalResponseTime){
-          var badge = create("span","scb-modal-badge");
-          badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.2l2.2 1.3"/></svg>' + SETTINGS.modalResponseTime;
+        var responseBadgeText = SETTINGS.modalResponseTime;
+        if(SETTINGS.scheduleEnabled && !isOnline){
+          responseBadgeText = SETTINGS.scheduleOfflineText || "Back tomorrow at 9:00 AM";
+        }
+        if(responseBadgeText){
+          var badge = create("span","scb-modal-badge" + (!isOnline ? " offline" : ""));
+          badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.2l2.2 1.3"/></svg>' + responseBadgeText;
           header.appendChild(badge);
         }
       } else {
@@ -367,8 +486,8 @@ export function buildWidgetCode(config: ChatConfig): string {
           avatar.alt = agent.name;
           avatarWrap.appendChild(avatar);
 
-          var badge = create("span","scb-agent-badge");
-          badge.style.background = agent.color || "#25D366";
+          var badge = create("span","scb-agent-badge" + (!isOnline ? " offline" : ""));
+          badge.style.background = (!isOnline ? "#6b7280" : (agent.color || "#25D366"));
           badge.innerHTML = agent.icon || "";
           avatarWrap.appendChild(badge);
           card.appendChild(avatarWrap);
@@ -377,7 +496,7 @@ export function buildWidgetCode(config: ChatConfig): string {
           var name = create("div","scb-agent-name");
           name.textContent = agent.name;
           var role = create("div","scb-agent-role");
-          role.textContent = agent.role;
+          role.textContent = agent.role + (!isOnline ? " • Offline" : "");
           info.appendChild(name);
           info.appendChild(role);
           card.appendChild(info);
@@ -406,22 +525,28 @@ export function buildWidgetCode(config: ChatConfig): string {
         startBtn.textContent = SETTINGS.modalStartChatText;
         startBtn.target = "_blank";
         startBtn.rel = "noopener noreferrer";
-        var agentUrl = activeAgent.url || "";
+        var agentUrl = formatDynamicUrl(activeAgent.url || "");
         startBtn.href = (!/^javascript:/i.test(agentUrl)) ? agentUrl : "#";
 
         input.oninput = function(){
           var cleanVal = String(activeAgent.value || "").trim();
-          var encMsg = encodeURIComponent(input.value.trim());
+          var rawMsg = input.value.trim()
+            .replace(/\{url\}|\{page_url\}/gi, window.location.href)
+            .replace(/\{title\}|\{page_title\}/gi, document.title);
+          var encMsg = encodeURIComponent(rawMsg);
           if(activeAgent.channelId === "whatsapp"){
             startBtn.href = "https://wa.me/" + cleanVal.replace(/[^0-9]/g,"") + (encMsg ? "?text=" + encMsg : "");
           } else if(activeAgent.channelId === "telegram"){
             startBtn.href = "https://t.me/" + cleanVal.replace(/^@/,"").replace(/[^a-zA-Z0-9._-]/g,"") + (encMsg ? "?text=" + encMsg : "");
+          } else if(activeAgent.channelId === "sms"){
+            startBtn.href = "sms:" + cleanVal.replace(/[^0-9+]/g,"") + (encMsg ? "?body=" + encMsg : "");
           } else if(activeAgent.channelId === "email"){
             startBtn.href = "mailto:" + cleanVal.replace(/[^a-zA-Z0-9._%+\-@]/g,"") + (encMsg ? "?body=" + encMsg : "");
           }
         };
 
         startBtn.onclick = function(){
+          trackClick(activeAgent.channelId, activeAgent.channelId, activeAgent.name, startBtn.href);
           if(SETTINGS.closeAfterClick) closeMenu();
         };
 
@@ -441,14 +566,17 @@ export function buildWidgetCode(config: ChatConfig): string {
         if(!SETTINGS.showLabels) label.style.display = "none";
 
         var link = create("a","scb-button " + SETTINGS.buttonShape);
-        var chUrl = channel.url || "";
+        var chUrl = formatDynamicUrl(channel.url || "");
         link.href = (!/^javascript:/i.test(chUrl)) ? chUrl : "#";
         link.setAttribute("aria-label", channel.label);
         link.style.setProperty("--scb-color", channel.color || "#111827");
         link.innerHTML = channel.icon || "";
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        link.onclick = function(){ if(SETTINGS.closeAfterClick) closeMenu(); };
+        link.onclick = function(){
+          trackClick(channel.id, channel.label, "", link.href);
+          if(SETTINGS.closeAfterClick) closeMenu();
+        };
 
         if(root.classList.contains("left")){
           item.appendChild(link);
@@ -485,42 +613,137 @@ export function buildWidgetCode(config: ChatConfig): string {
   document.body.appendChild(root);
   render();
 
-  if(SETTINGS.greetingEnabled && SETTINGS.greetingText){
-    setTimeout(function(){
-      if(!root.classList.contains("open")){
-        var greet = create("div","scb-greeting");
-        var greetSpan = create("span");
-        greetSpan.textContent = SETTINGS.greetingText;
-        var dismissBtn = create("button");
-        dismissBtn.type = "button";
-        dismissBtn.setAttribute("aria-label", "Dismiss");
-        dismissBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
-        dismissBtn.onclick = function(){ greet.remove(); };
-        greet.appendChild(greetSpan);
-        greet.appendChild(dismissBtn);
-        root.insertBefore(greet, root.firstChild);
+  var greetingDisplayed = false;
+  function showGreetingBubble(){
+    if(greetingDisplayed || root.classList.contains("open")) return;
+    if(!SETTINGS.greetingEnabled || !SETTINGS.greetingText) return;
+    greetingDisplayed = true;
 
-        if(SETTINGS.enableSound){
-          try {
-            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var greet = create("div","scb-greeting");
+    var greetSpan = create("span");
+    greetSpan.textContent = SETTINGS.greetingText;
+    var dismissBtn = create("button");
+    dismissBtn.type = "button";
+    dismissBtn.setAttribute("aria-label", "Dismiss");
+    dismissBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+    dismissBtn.onclick = function(){ greet.remove(); };
+    greet.appendChild(greetSpan);
+    greet.appendChild(dismissBtn);
+    root.insertBefore(greet, root.firstChild);
+
+    if(SETTINGS.enableSound){
+      try {
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if(AudioCtx){
+          var ctx = new AudioCtx();
+          var playChime = function(){
             var osc = ctx.createOscillator();
             var gain = ctx.createGain();
+            osc.type = "sine";
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.frequency.setValueAtTime(587.33, ctx.currentTime);
             osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
-            gain.gain.setValueAtTime(0.06, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.35);
-          } catch(e){}
+            gain.gain.setValueAtTime(0.22, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.38);
+          };
+          if(ctx.state === "suspended"){
+            ctx.resume().then(playChime).catch(function(){});
+          } else {
+            playChime();
+          }
+        }
+      } catch(e){}
+    }
+  }
+
+  function getScrollPercentage(){
+    var docHeight = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    ) - window.innerHeight;
+    if(docHeight <= 0) return 100;
+    return ((window.pageYOffset || document.documentElement.scrollTop) / docHeight) * 100;
+  }
+
+  /* 3. Scroll Depth Trigger */
+  var scrollTriggerFired = false;
+  if(SETTINGS.scrollTriggerEnabled){
+    if(SETTINGS.scrollTriggerTarget === "greeting"){
+      function onScrollGreeting(){
+        if(greetingDisplayed) {
+          window.removeEventListener("scroll", onScrollGreeting);
+          return;
+        }
+        if(getScrollPercentage() >= SETTINGS.scrollTriggerPercent){
+          window.removeEventListener("scroll", onScrollGreeting);
+          showGreetingBubble();
         }
       }
-    }, SETTINGS.greetingDelay || 2500);
+      window.addEventListener("scroll", onScrollGreeting, { passive: true });
+      onScrollGreeting();
+    } else {
+      // Launcher target: hide initially, reveal upon reaching scroll depth threshold
+      root.classList.add("scb-scroll-hidden");
+      function onScrollLauncher(){
+        if(scrollTriggerFired) {
+          window.removeEventListener("scroll", onScrollLauncher);
+          return;
+        }
+        if(getScrollPercentage() >= SETTINGS.scrollTriggerPercent){
+          scrollTriggerFired = true;
+          window.removeEventListener("scroll", onScrollLauncher);
+          root.classList.remove("scb-scroll-hidden");
+          root.classList.add("scb-scroll-visible");
+          if(SETTINGS.greetingEnabled && SETTINGS.greetingText){
+            setTimeout(showGreetingBubble, SETTINGS.greetingDelay || 2500);
+          }
+        }
+      }
+      window.addEventListener("scroll", onScrollLauncher, { passive: true });
+      onScrollLauncher();
+    }
+  } else {
+    // Normal greeting delay when scroll depth trigger is disabled
+    if(SETTINGS.greetingEnabled && SETTINGS.greetingText){
+      setTimeout(showGreetingBubble, SETTINGS.greetingDelay || 2500);
+    }
+  }
+
+  /* 4. Desktop Exit-Intent Trigger */
+  if(SETTINGS.exitIntentEnabled){
+    var exitIntentFired = false;
+    function onExitIntent(e){
+      if(exitIntentFired) return;
+      if(e.clientY <= 15){
+        exitIntentFired = true;
+        document.removeEventListener("mouseleave", onExitIntent);
+        // Reveal launcher if it was hidden by scroll depth
+        root.classList.remove("scb-scroll-hidden");
+        root.classList.add("scb-scroll-visible");
+
+        if(SETTINGS.exitIntentAction === "greeting"){
+          showGreetingBubble();
+        } else {
+          if(!root.classList.contains("open")){
+            toggleMenu();
+          }
+        }
+      }
+    }
+    if(typeof window !== "undefined" && window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches){
+      document.addEventListener("mouseleave", onExitIntent);
+    }
   }
 
   if(SETTINGS.autoOpen){
-    setTimeout(function(){ toggleMenu(); }, SETTINGS.autoOpenDelay || 1200);
+    setTimeout(function(){
+      if(!root.classList.contains("scb-scroll-hidden")){
+        toggleMenu();
+      }
+    }, SETTINGS.autoOpenDelay || 1200);
   }
 
   root.addEventListener("click", function(e){

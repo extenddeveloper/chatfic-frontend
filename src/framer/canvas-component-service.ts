@@ -99,6 +99,7 @@ interface ChatficProps {
     ariaLabel?: string
     greetingEnabled?: boolean
     greetingText?: string
+    enableSound?: boolean
     showBadge?: boolean
     badgeText?: string
     whatsapp?: string
@@ -113,8 +114,30 @@ interface ChatficProps {
     line?: string
     signal?: string
     phone?: string
+    sms?: string
+    smsMessage?: string
     email?: string
+    discord?: string
+    slack?: string
+    teams?: string
+    x?: string
+    linkedin?: string
+    maps?: string
     custom?: string
+    enableAnalytics?: boolean
+    scrollTriggerEnabled?: boolean
+    scrollTriggerPercent?: number
+    scrollTriggerTarget?: "launcher" | "greeting"
+    exitIntentEnabled?: boolean
+    exitIntentAction?: "modal" | "greeting"
+    scheduleEnabled?: boolean
+    scheduleStart?: string
+    scheduleEnd?: string
+    scheduleOfflineAction?: "badge" | "hide"
+    scheduleOfflineText?: string
+    targetingEnabled?: boolean
+    targetingMode?: "show" | "hide"
+    targetingRules?: string
 }
 
 export default function Chatfic(props: ChatficProps) {
@@ -148,8 +171,23 @@ export default function Chatfic(props: ChatficProps) {
         ariaLabel = ${JSON.stringify(config.ariaLabel || "Open chat options")},
         greetingEnabled = ${Boolean(config.greetingEnabled)},
         greetingText = ${JSON.stringify(config.greetingText || "Need help? Chat with us.")},
+        enableSound = ${Boolean(config.enableSound)},
         showBadge = ${Boolean(config.showBadge)},
         badgeText = ${JSON.stringify(config.badgeText || "1")},
+        enableAnalytics = ${Boolean(config.enableAnalytics !== false)},
+        scrollTriggerEnabled = ${Boolean(config.scrollTriggerEnabled)},
+        scrollTriggerPercent = ${Number(config.scrollTriggerPercent ?? 25)},
+        scrollTriggerTarget = ${JSON.stringify(config.scrollTriggerTarget || "launcher")},
+        exitIntentEnabled = ${Boolean(config.exitIntentEnabled)},
+        exitIntentAction = ${JSON.stringify(config.exitIntentAction || "modal")},
+        scheduleEnabled = ${Boolean(config.scheduleEnabled)},
+        scheduleStart = ${JSON.stringify(config.scheduleStart || "09:00")},
+        scheduleEnd = ${JSON.stringify(config.scheduleEnd || "18:00")},
+        scheduleOfflineAction = ${JSON.stringify(config.scheduleOfflineAction || "badge")},
+        scheduleOfflineText = ${JSON.stringify(config.scheduleOfflineText || "Back tomorrow at 9:00 AM")},
+        targetingEnabled = ${Boolean(config.targetingEnabled)},
+        targetingMode = ${JSON.stringify(config.targetingMode || "show")},
+        targetingRules = ${JSON.stringify(config.targetingRules || "")},
         whatsapp = ${JSON.stringify(config.channels.find((c) => c.id === "whatsapp")?.value || "")},
         whatsappMessage = ${JSON.stringify(config.channels.find((c) => c.id === "whatsapp")?.message || "Hello! I would like to know more.")},
         messenger = ${JSON.stringify(config.channels.find((c) => c.id === "messenger")?.value || "")},
@@ -162,7 +200,15 @@ export default function Chatfic(props: ChatficProps) {
         line = ${JSON.stringify(config.channels.find((c) => c.id === "line")?.value || "")},
         signal = ${JSON.stringify(config.channels.find((c) => c.id === "signal")?.value || "")},
         phone = ${JSON.stringify(config.channels.find((c) => c.id === "phone")?.value || "")},
+        sms = ${JSON.stringify(config.channels.find((c) => c.id === "sms")?.value || "")},
+        smsMessage = ${JSON.stringify(config.channels.find((c) => c.id === "sms")?.message || "")},
         email = ${JSON.stringify(config.channels.find((c) => c.id === "email")?.value || "")},
+        discord = ${JSON.stringify(config.channels.find((c) => c.id === "discord")?.value || "")},
+        slack = ${JSON.stringify(config.channels.find((c) => c.id === "slack")?.value || "")},
+        teams = ${JSON.stringify(config.channels.find((c) => c.id === "teams")?.value || "")},
+        x = ${JSON.stringify(config.channels.find((c) => c.id === "x")?.value || "")},
+        linkedin = ${JSON.stringify(config.channels.find((c) => c.id === "linkedin")?.value || "")},
+        maps = ${JSON.stringify(config.channels.find((c) => c.id === "maps")?.value || "")},
         custom = ${JSON.stringify(config.channels.find((c) => c.id === "custom")?.value || "")},
     } = props
 
@@ -181,6 +227,39 @@ export default function Chatfic(props: ChatficProps) {
             return () => clearTimeout(timer)
         }
     }, [isCanvas, autoOpen, autoOpenDelay])
+
+    React.useEffect(() => {
+        if (!isCanvas && greetingEnabled && enableSound && !greetingDismissed) {
+            const timer = setTimeout(() => {
+                try {
+                    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+                    if (AudioCtx) {
+                        const ctx = new AudioCtx()
+                        const play = () => {
+                            const now = ctx.currentTime
+                            const osc = ctx.createOscillator()
+                            const gain = ctx.createGain()
+                            osc.type = "sine"
+                            osc.connect(gain)
+                            gain.connect(ctx.destination)
+                            osc.frequency.setValueAtTime(587.33, now)
+                            osc.frequency.setValueAtTime(880, now + 0.08)
+                            gain.gain.setValueAtTime(0.22, now)
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38)
+                            osc.start(now)
+                            osc.stop(now + 0.38)
+                        }
+                        if (ctx.state === "suspended") {
+                            ctx.resume().then(play).catch(() => {})
+                        } else {
+                            play()
+                        }
+                    }
+                } catch {}
+            }, 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [isCanvas, greetingEnabled, enableSound, greetingDismissed])
 
     React.useEffect(() => {
         if (!isOpen) return
@@ -275,9 +354,43 @@ export default function Chatfic(props: ChatficProps) {
         if (phone && phone.trim()) {
             list.push({ id: "phone", label: "Phone", url: "tel:" + phone.replace(/[^0-9+]/g, ""), color: "#111827", value: phone, message: "" })
         }
+        if (sms && sms.trim()) {
+            const clean = sms.replace(/[^0-9+]/g, "")
+            const msg = smsMessage ? "?body=" + encodeURIComponent(smsMessage) : ""
+            list.push({ id: "sms", label: "SMS", url: "sms:" + clean + msg, color: "#10B981", value: sms, message: smsMessage })
+        }
         if (email && email.trim()) {
             const cleanEmail = email.replace(/[^a-zA-Z0-9._%+\-@]/g, "")
             list.push({ id: "email", label: "Email", url: "mailto:" + cleanEmail, color: "#EA4335", value: email, message: "" })
+        }
+        if (discord && discord.trim()) {
+            const url = (discord.startsWith("http://") || discord.startsWith("https://")) ? discord : "https://discord.gg/" + discord.replace(/[^a-zA-Z0-9._-]/g, "")
+            list.push({ id: "discord", label: "Discord", url, color: "#5865F2", value: discord, message: "" })
+        }
+        if (slack && slack.trim()) {
+            const url = (slack.startsWith("http://") || slack.startsWith("https://")) ? slack : "https://" + slack
+            list.push({ id: "slack", label: "Slack", url, color: "#4A154B", value: slack, message: "" })
+        }
+        if (teams && teams.trim()) {
+            const url = (teams.startsWith("http://") || teams.startsWith("https://")) ? teams : "https://teams.microsoft.com/l/chat/0/0?users=" + encodeURIComponent(teams)
+            list.push({ id: "teams", label: "Microsoft Teams", url, color: "#6264A7", value: teams, message: "" })
+        }
+        if (x && x.trim()) {
+            const handle = x.replace(/^@/, "").replace(/[^a-zA-Z0-9._-]/g, "")
+            list.push({ id: "x", label: "X (Twitter)", url: "https://x.com/" + handle, color: "#000000", value: x, message: "" })
+        }
+        if (linkedin && linkedin.trim()) {
+            const clean = linkedin.replace(/^@/, "").trim()
+            const url = (clean.startsWith("http://") || clean.startsWith("https://"))
+                ? clean
+                : (clean.startsWith("in/") || clean.startsWith("company/"))
+                ? "https://www.linkedin.com/" + clean
+                : "https://www.linkedin.com/in/" + encodeURIComponent(clean)
+            list.push({ id: "linkedin", label: "LinkedIn", url, color: "#0A66C2", value: linkedin, message: "" })
+        }
+        if (maps && maps.trim()) {
+            const url = (maps.startsWith("http://") || maps.startsWith("https://")) ? maps : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(maps)
+            list.push({ id: "maps", label: "Google Maps", url, color: "#EA4335", value: maps, message: "" })
         }
         if (custom && custom.trim()) {
             list.push({ id: "custom", label: "Custom", url: custom, color: "#111827", value: custom, message: "" })
@@ -286,7 +399,7 @@ export default function Chatfic(props: ChatficProps) {
             list.push({ id: "whatsapp", label: "WhatsApp", url: "https://wa.me/", color: "#25D366", value: "", message: "Hello!" })
         }
         return list
-    }, [whatsapp, whatsappMessage, messenger, telegram, telegramMessage, instagram, tiktok, wechat, viber, line, signal, phone, email, custom])
+    }, [whatsapp, whatsappMessage, messenger, telegram, telegramMessage, instagram, tiktok, wechat, viber, line, signal, phone, sms, smsMessage, email, discord, slack, teams, x, linkedin, maps, custom])
 
     const agents = React.useMemo(() => {
         return rawAgents.map((ag: any) => {
@@ -323,8 +436,28 @@ export default function Chatfic(props: ChatficProps) {
                 directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://signal.me/#p/" + encodeURIComponent(rawVal)
             } else if (ag.channelId === "phone") {
                 directUrl = "tel:" + rawVal.replace(/[^0-9+]/g, "")
+            } else if (ag.channelId === "sms") {
+                const cleanDigits = rawVal.replace(/[^0-9+]/g, "")
+                directUrl = cleanDigits ? "sms:" + cleanDigits + (rawMsg ? "?body=" + encodeURIComponent(rawMsg) : "") : "sms:"
             } else if (ag.channelId === "email") {
                 directUrl = "mailto:" + rawVal.replace(/[^a-zA-Z0-9._%+\-@]/g, "") + (rawMsg ? "?body=" + encodeURIComponent(rawMsg) : "")
+            } else if (ag.channelId === "discord") {
+                directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://discord.gg/" + rawVal.replace(/[^a-zA-Z0-9._-]/g, "")
+            } else if (ag.channelId === "slack") {
+                directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://" + rawVal
+            } else if (ag.channelId === "teams") {
+                directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://teams.microsoft.com/l/chat/0/0?users=" + encodeURIComponent(rawVal)
+            } else if (ag.channelId === "x") {
+                directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://x.com/" + rawVal.replace(/^@/, "").replace(/[^a-zA-Z0-9._-]/g, "")
+            } else if (ag.channelId === "linkedin") {
+                const clean = rawVal.replace(/^@/, "").trim()
+                directUrl = (clean.startsWith("http://") || clean.startsWith("https://"))
+                    ? clean
+                    : (clean.startsWith("in/") || clean.startsWith("company/"))
+                    ? "https://www.linkedin.com/" + clean
+                    : "https://www.linkedin.com/in/" + encodeURIComponent(clean)
+            } else if (ag.channelId === "maps") {
+                directUrl = (rawVal.startsWith("http://") || rawVal.startsWith("https://")) ? rawVal : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(rawVal)
             } else if (ag.channelId === "custom") {
                 directUrl = (rawVal && !/^\s*(javascript|data|vbscript):/i.test(rawVal)) ? rawVal : "#"
             }
@@ -1197,6 +1330,17 @@ addPropertyControls(Chatfic, {
         type: ControlType.String,
         title: "Greeting Text",
         defaultValue: ${JSON.stringify(config.greetingText || "Need help? Chat with us.")},
+        hidden(props: any) {
+            return !props.greetingEnabled
+        },
+    },
+    enableSound: {
+        type: ControlType.Boolean,
+        title: "Bubble Sound",
+        defaultValue: ${Boolean(config.enableSound)},
+        hidden(props: any) {
+            return !props.greetingEnabled
+        },
     },
     whatsapp: {
         type: ControlType.String,
@@ -1268,17 +1412,119 @@ addPropertyControls(Chatfic, {
         placeholder: "+1234567890",
         defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "phone")?.value || "")},
     },
+    sms: {
+        type: ControlType.String,
+        title: "SMS",
+        placeholder: "+1234567890",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "sms")?.value || "")},
+    },
+    smsMessage: {
+        type: ControlType.String,
+        title: "SMS Default Text",
+        placeholder: "Hello! I have a question.",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "sms")?.message || "")},
+    },
     email: {
         type: ControlType.String,
         title: "Email",
         placeholder: "hello@example.com",
         defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "email")?.value || "")},
     },
+    discord: {
+        type: ControlType.String,
+        title: "Discord",
+        placeholder: "https://discord.gg/yourserver",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "discord")?.value || "")},
+    },
+    slack: {
+        type: ControlType.String,
+        title: "Slack",
+        placeholder: "https://join.slack.com/...",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "slack")?.value || "")},
+    },
+    teams: {
+        type: ControlType.String,
+        title: "Teams",
+        placeholder: "user@company.com",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "teams")?.value || "")},
+    },
+    x: {
+        type: ControlType.String,
+        title: "X (Twitter)",
+        placeholder: "username",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "x")?.value || "")},
+    },
+    linkedin: {
+        type: ControlType.String,
+        title: "LinkedIn",
+        placeholder: "in/username or company/name",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "linkedin")?.value || "")},
+    },
+    maps: {
+        type: ControlType.String,
+        title: "Google Maps",
+        placeholder: "Store address or maps link",
+        defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "maps")?.value || "")},
+    },
     custom: {
         type: ControlType.String,
         title: "Custom URL",
         placeholder: "https://example.com/chat",
         defaultValue: ${JSON.stringify(config.channels.find((c) => c.id === "custom")?.value || "")},
+    },
+    scrollTriggerEnabled: {
+        type: ControlType.Boolean,
+        title: "Scroll Trigger",
+        defaultValue: ${Boolean(config.scrollTriggerEnabled)},
+    },
+    scrollTriggerPercent: {
+        type: ControlType.Number,
+        title: "Scroll Depth %",
+        min: 5,
+        max: 95,
+        step: 5,
+        defaultValue: ${Number(config.scrollTriggerPercent ?? 25)},
+        hidden: (props: any) => !props.scrollTriggerEnabled,
+    },
+    exitIntentEnabled: {
+        type: ControlType.Boolean,
+        title: "Exit-Intent (Desktop)",
+        defaultValue: ${Boolean(config.exitIntentEnabled)},
+    },
+    scheduleEnabled: {
+        type: ControlType.Boolean,
+        title: "Operating Hours",
+        defaultValue: ${Boolean(config.scheduleEnabled)},
+    },
+    scheduleStart: {
+        type: ControlType.String,
+        title: "Opening Time",
+        defaultValue: ${JSON.stringify(config.scheduleStart || "09:00")},
+        hidden: (props: any) => !props.scheduleEnabled,
+    },
+    scheduleEnd: {
+        type: ControlType.String,
+        title: "Closing Time",
+        defaultValue: ${JSON.stringify(config.scheduleEnd || "18:00")},
+        hidden: (props: any) => !props.scheduleEnabled,
+    },
+    scheduleOfflineText: {
+        type: ControlType.String,
+        title: "Offline Message",
+        defaultValue: ${JSON.stringify(config.scheduleOfflineText || "Back tomorrow at 9:00 AM")},
+        hidden: (props: any) => !props.scheduleEnabled,
+    },
+    targetingEnabled: {
+        type: ControlType.Boolean,
+        title: "Page Targeting",
+        defaultValue: ${Boolean(config.targetingEnabled)},
+    },
+    targetingRules: {
+        type: ControlType.String,
+        title: "Targeting Paths",
+        placeholder: "/pricing, /checkout, /blog/*",
+        defaultValue: ${JSON.stringify(config.targetingRules || "")},
+        hidden: (props: any) => !props.targetingEnabled,
     },
 })
 `

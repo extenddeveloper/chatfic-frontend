@@ -320,14 +320,23 @@ button.cf-tab-profile.active {
     gap: 2px;
 }
 
-.cf-section-title {
-    font-size: 13px;
+.cf-section-title,
+h2.cf-section-title {
+    font-size: 12px;
     font-weight: 600;
     color: var(--cf-text);
     margin: 0;
+    line-height: 1.3;
 }
 
-.cf-section-description {
+.cf-section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cf-section-description,
+.cf-section-desc {
     font-size: 11px;
     color: var(--cf-text-secondary);
     margin: 0;
@@ -1113,18 +1122,16 @@ button.cf-reset-link:hover {
 
 /* Interactive Preview Container */
 .preview-container {
-    border: 1px solid var(--cf-border);
-    border-radius: var(--cf-radius);
-    background: var(--cf-preview-bg);
-    background-image: 
-        linear-gradient(var(--cf-preview-grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--cf-preview-grid) 1px, transparent 1px);
-    background-size: 16px 16px;
-    height: 380px;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+	border: 1px solid var(--cf-border);
+	border-radius: var(--cf-radius);
+	background: var(--cf-preview-bg);
+	background-image: linear-gradient(var(--cf-preview-grid) 1px, transparent 1px), linear-gradient(90deg, var(--cf-preview-grid) 1px, transparent 1px);
+	background-size: 16px 16px;
+	height: 440px;
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 .preview-toolbar {
@@ -2358,9 +2365,33 @@ button.cf-hero-config-item:hover {
 }
 
 .cf-flex-between {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 18px !important;
+}
+
+.cf-flex-between > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cf-setting-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    padding-right: 4px !important;
+}
+
+.cf-flex-center-gap-8,
+.cf-setting-controls {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
 }
 
 .cf-flex-end-gap-8 {
@@ -2783,6 +2814,238 @@ button.cf-hero-config-item:hover {
 .cf-more-framefic-footer-link:hover {
     opacity: 0.8;
     text-decoration: underline;
+}
+
+/* 16b. Behavioral Triggers & Smart Display Cards */
+.cf-trigger-card {
+    background: var(--cf-bg-secondary);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    padding: 13px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.cf-trigger-card.is-active {
+    border-color: rgba(82, 113, 255, 0.45);
+}
+
+.cf-trigger-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cf-trigger-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+}
+
+.cf-trigger-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+
+.cf-trigger-desc {
+    font-size: 11px;
+    color: var(--cf-text-secondary);
+    line-height: 1.4;
+}
+
+.cf-trigger-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--cf-border);
+}
+
+/* Day selector - 7-Column Sleek Horizontal Row */
+.cf-day-selector {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+button.cf-day-pill {
+    all: unset !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 34px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--cf-border) !important;
+    background: var(--cf-control) !important;
+    color: var(--cf-text-secondary) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    user-select: none !important;
+    transition: all 0.15s ease !important;
+}
+
+button.cf-day-pill:hover {
+    border-color: var(--cf-border-hover) !important;
+    color: var(--cf-text) !important;
+    background: var(--cf-control-hover) !important;
+}
+
+button.cf-day-pill.active {
+    background: #0099ff !important;
+    border-color: #0099ff !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(0, 153, 255, 0.4) !important;
+}
+
+.cf-day-presets {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    margin-top: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+button.cf-preset-pill,
+button.cf-preset-btn {
+    all: unset !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 3px 9px !important;
+    border-radius: 999px !important;
+    border: 1px solid var(--cf-border) !important;
+    background: var(--cf-bg-tertiary) !important;
+    color: var(--cf-text-secondary) !important;
+    font-size: 10.5px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: all 0.15s ease !important;
+}
+
+button.cf-preset-pill:hover,
+button.cf-preset-btn:hover {
+    color: var(--cf-text) !important;
+    background: var(--cf-control-hover) !important;
+    border-color: var(--cf-border-hover) !important;
+}
+
+button.cf-preset-pill.is-active,
+button.cf-preset-btn.is-active {
+    color: #ffffff !important;
+    border-color: #0099ff !important;
+    background: #0099ff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 4px rgba(0, 153, 255, 0.3) !important;
+}
+
+.cf-preset-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 10.5px;
+    color: var(--cf-tint);
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+}
+
+.cf-preset-link:hover {
+    opacity: 1;
+}
+
+.cf-preset-dot {
+    font-size: 10px;
+    color: var(--cf-text-tertiary);
+}
+
+/* Chime Test Button */
+button.cf-btn-test-chime {
+    all: unset !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    height: 24px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: var(--cf-text-secondary) !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--cf-border) !important;
+    background: var(--cf-control) !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s ease !important;
+}
+
+button.cf-btn-test-chime:hover {
+    color: var(--cf-text) !important;
+    background: var(--cf-control-hover) !important;
+    border-color: var(--cf-border-hover) !important;
+}
+
+/* Range input */
+.cf-range-input {
+    flex: 1;
+    accent-color: #5271ff;
+    cursor: pointer;
+    height: 6px;
+}
+
+.cf-badge-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--cf-control);
+    border: 1px solid var(--cf-border);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--cf-text);
+}
+
+/* Offline badge styles in preview */
+.preview-modal-badge.offline {
+    background: rgba(0, 0, 0, 0.3) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.preview-modal-dot.offline {
+    background: #9ca3af !important;
+    box-shadow: none !important;
+}
+
+.preview-agent-offline-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #9ca3af;
+    border: 2px solid #ffffff;
 }
 
 /* 17. Shell Geometry Footer */
